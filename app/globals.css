@@ -1,4 +1,152 @@
 /* app/globals.css */
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+
+/* === Konfigurasi Dasar Tailwind === */
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,100..900;1,100..900&family=Shrikhand&display=swap');
+@import "tailwindcss";
+
+* {
+    font-family: 'Montserrat', sans-serif;
+}
+/* === Gaya Global & Animasi === */
+@layer base {
+  .leaflet-container {
+    font-family: 'Inter', sans-serif;
+    /* Latar belakang default untuk peta, bisa di-override jika perlu */
+    background: #aadaff;
+  }
+}
+@keyframes wave-fill {
+  from { transform: translateY(105%); }
+  to { transform: translateY(0%); }
+}
+@keyframes wave-move {
+  100% { transform: rotate(360deg); }
+}
+
+@layer components {
+  /* Blob Animation untuk Latar Belakang */
+  .animate-blob {
+    animation: blob 7s infinite;
+  }
+  .animation-delay-4000 {
+    animation-delay: -4s;
+  }
+  .animate-fade-in-up {
+  animation: fade-in-up 0.6s ease-out forwards;
+  opacity: 0; /* Membuat kartu tidak terlihat sebelum animasi dimulai */
+}
+
+  /*
+    Animasi Card yang Lebih Efisien
+    Gunakan satu kelas .animate-card dan atur delay di HTML
+    Contoh: <div class="animate-card" style="--delay: 0.2s;"></div>
+  */
+  .animate-card {
+    animation: fade-in-up 0.7s ease-in both;
+    animation-delay: var(--delay, 0s); /* Gunakan variabel --delay, default 0s */
+  }
+
+  /* Animasi Page Fade-in */
+  .animate-page-fade-in {
+    animation: fade-in-up 0.7s ease-in;
+  }
+}
+.card-item {
+  animation: fade-in-up 0.6s ease-out forwards;
+  opacity: 0;
+}
+
+.animate-card {
+  animation: fade-in-up 0.7s ease-in both;
+  animation-delay: var(--delay, 0s); /* Gunakan variabel --delay, default 0s */
+}
+
+/* Keyframes untuk Animasi */
+@keyframes fade-in-up {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes blob {
+  0% { transform: translate(0px, 0px) scale(1); }
+  33% { transform: translate(30px, -50px) scale(1.1); }
+  66% { transform: translate(-20px, 20px) scale(0.9); }
+  100% { transform: translate(0px, 0px) scale(1); }
+}
+
+/* === Komponen Spesifik: Slider === */
+.slider-container {
+  overflow: hidden;
+  position: relative;
+  width: 100%;
+  -webkit-mask-image: linear-gradient(to right, transparent, black 10%, black 90%, transparent);
+  mask-image: linear-gradient(to right, transparent, black 10%, black 90%, transparent);
+}
+
+.slider-track {
+  display: flex;
+  /* Gunakan variabel untuk membuat animasi dinamis */
+  animation: scroll var(--scroll-duration, 60s) linear infinite;
+}
+
+.slider-container:hover .slider-track {
+  animation-play-state: paused;
+}
+
+@keyframes scroll {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    /* Gunakan variabel untuk kalkulasi yang dinamis */
+    transform: translateX(calc(-1 * var(--card-width, 144px) * var(--card-count, 8)));
+  }
+}
+@keyframes marquee {
+            0% { transform: translateX(100%); }
+            100% { transform: translateX(-100%); }
+          }
+
+/* === Kustomisasi Peta Leaflet === */
+/* Pastikan CSS Leaflet diimpor di layout.js, bukan di sini (lihat penjelasan di bawah) */
+
+/* Ganti filter peta dark mode agar lebih nyaman dilihat */
+.dark .leaflet-tile-pane {
+  filter: invert(1) hue-rotate(180deg) brightness(95%) contrast(90%);
+}
+
+.leaflet-popup-content-wrapper,
+.leaflet-popup-tip {
+  background-color: rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(10px);
+  border-radius: 12px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.dark .leaflet-popup-content-wrapper,
+.dark .leaflet-popup-tip {
+  background-color: rgba(31, 41, 55, 0.8);
+  color: white;
+}
+
+.legend {
+  line-height: 18px;
+  color: #555;
+  background-color: rgba(255, 255, 255, 0.85);
+  padding: 10px;
+  border-radius: 5px;
+  box-shadow: 0 0 15px rgba(0, 0, 0, 0.2);
+}
+
+.legend i {
+  width: 18px;
+  height: 18px;
+  float: left;
+  margin-right: 8px;
+  opacity: 0.9;
+  border: 1px solid #777;
+}
+
+.leaflet-interactive {
+  transition: fill 0.75s ease-in-out;
+}
