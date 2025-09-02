@@ -14,18 +14,17 @@ const getWaveColor = (category) => {
     return colors[category] || 'bg-gray-400';
 };
 
-const PortCard = ({ port, tempRange, conditionText, windSpeed, windGust, windDirection, waveRange, waveCategory, theme }) => (
-    <div className={`${theme.glassCardClass} p-5 flex flex-col justify-between h-[290px] w-[280px]`}>
+const PortCard = ({dayLabel , tempRange, conditionText, windSpeed, windGust, windDirection, waveRange, waveCategory, theme }) => (
+    <div className={`${theme.glassCardClass} p-5 flex flex-col h-[260px] w-[280px]`}>
         <div>
-            <p className={`${theme.text.secondary} text-sm`}>Pelabuhan</p>
-            <h3 className={`text-xl font-bold ${theme.text.primary}`}>{port}</h3>
+            <p className={`${theme.text.primary} text-xl font-bold`}>{dayLabel}</p>
         </div>
         
-        <div className='flex-grow flex flex-col justify-center'>
+        <div className='flex-grow flex flex-col'>
             <div className="flex flex-row items-center justify-center space-x-4">
                 <div className="flex flex-col items-center justify-center w-1/2">
                     <WeatherIcon condition={conditionText} size={90}/>
-                    <p className={`text-lg font-bold ${theme.text.primary} mt-1`}>{conditionText}</p>
+                    <p className={`text-lg font-bold text-center ${theme.text.primary} mt-1`}>{conditionText}</p>
                 </div>
                 <div className={`w-1/2 self-stretch border-l ${theme.border} flex flex-col justify-center space-y-3 pl-4`}>
                     <div className="flex flex-col items-center justify-center">
@@ -41,7 +40,7 @@ const PortCard = ({ port, tempRange, conditionText, windSpeed, windGust, windDir
             </div>
         </div>
 
-        <div className={`mt-auto pt-3 border-t ${theme.border} flex items-center justify-center space-x-3`}>
+        <div className={` border-t ${theme.border} flex items-center justify-center space-x-3`}>
             <Waves className="w-5 h-5 text-cyan-500" />
             <div className={`w-4 h-4 rounded-full ${getWaveColor(waveCategory)}`}></div>
             <span className={`font-semibold text-sm ${theme.text.primary}`}>{waveCategory}</span>
