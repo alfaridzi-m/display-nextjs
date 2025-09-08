@@ -518,7 +518,7 @@ const PerairanPage = ({ theme }) => {
 
     return (
         <div className={`flex flex-col h-[calc(100vh-4rem)] ${theme.glassCardClass} rounded-3xl overflow-hidden`}>
-            <header className="p-4 z-10 border-b ${theme.border}">
+            <header className={`p-4 z-10 border-b ${theme.border}`}>
                 <h1 className={`text-xl font-bold text-center ${theme.text.primary}`}>{mapTitle}</h1>
                 <p className={`text-center text-sm ${theme.text.secondary} mb-3`}>Sumber data: BMKG</p>
 
@@ -555,7 +555,7 @@ const Display = () => {
   const portIds = ['AA005', 'AA003', 'AA006','AA007','AA001'];
   const pageDurations = {
     weather: 15000 * portIds.length,
-    cities: 300000,
+    cities: 30000,
     Perairan: 30000,
   }
   const [activePage, setActivePage] = useState(pages[0]);
@@ -588,11 +588,17 @@ const Display = () => {
         <Sidebar activePage={activePage} handleNavClick={handleNavClick} isDarkMode={isDarkMode} setIsDarkMode={setIsDarkMode} pageDurations={pageDurations} />
         <main className="flex-1 p-4 sm:p-6 lg:p-8 pb-28 md:pb-8 overflow-y-auto z-10">
           
-          <div key={activePage}>
-            {activePage === 'weather' && <WeatherPage theme={theme} list={portIds}/>}
-            {activePage === 'cities' && <CitiesPage theme={theme}/>}
-            {activePage === 'Peta' && <PerairanPage theme={theme}/>}
-          </div>
+        <div>
+        <div style={{ display: activePage === 'weather' ? 'block' : 'none' }}>
+            <WeatherPage theme={theme} list={portIds} />
+        </div>
+        <div style={{ display: activePage === 'cities' ? 'block' : 'none' }}>
+            <CitiesPage theme={theme} />
+        </div>
+        <div style={{ display: activePage === 'Perairan' ? 'block' : 'none' }}>
+            <PerairanPage theme={theme} />
+        </div>
+        </div>
 
         </main>
         <Clock theme={theme} isDarkMode={isDarkMode}/>
