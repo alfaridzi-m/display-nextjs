@@ -14,6 +14,8 @@ import HourlyForecastCard from './components/hourly-card';
 import DailyForecastItem from './components/dailyforecast';
 import PortCard from './components/port-card';
 import InfoRow from './components/info-row';
+import "leaflet/dist/leaflet.css";
+
 
 
 
@@ -400,47 +402,54 @@ const PerairanPage = ({ theme }) => {
     // Inisialisasi peta dan gambar poligon awal
     useEffect(() => {
         const initializeMap = async () => {
-            if (mapRef.current || !mapContainerRef.current || !window.L || !window.dayjs) return;
+                if (mapRef.current || !mapContainerRef.current) return;
 
-            mapRef.current = window.L.map(mapContainerRef.current, { attributionControl: false }).setView([-2.548926, 118.0148634], 5);
-            window.L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-            }).addTo(mapRef.current);
+                // buat peta
+                mapRef.current = L.map(mapContainerRef.current, { attributionControl: false })
+                  .setView([-2.548926, 118.0148634], 5);
 
-            try {
-                const [geojsonData] = await Promise.all([
-                    fetch('https://maritim.bmkg.go.id/marine-data/meta/wilmetos.min.geojson').then(res => res.json()),
-                    fetchAndProcessForecasts()
-                ]);
-
-                // Gambar poligon sekali saja dan simpan referensinya
-                window.L.geoJSON(geojsonData, {
-                    style: feature => ({
-                        color: "#333", weight: 1, opacity: 0.8,
-                        fillColor: kategoriGelombang.unknown.color, fillOpacity: 0.75
-                    }),
-                    onEachFeature: (feature, layer) => {
-                        featureLayersRef.current[feature.properties.ID_MAR] = layer;
-                    }
+                L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+                  attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
                 }).addTo(mapRef.current);
 
-                const legend = window.L.control({ position: 'bottomright' });
-                legend.onAdd = function (map) {
-                    const div = window.L.DomUtil.create('div', 'info legend');
-                    let labels = ['<strong>Kategori Gelombang</strong>'];
+                try {
+                  const [geojsonData] = await Promise.all([
+                    fetch("/wilpro.geojson").then(res => res.json()), // local file
+                    fetchAndProcessForecasts(),
+                  ]);
+
+                  L.geoJSON(geojsonData, {
+                    style: feature => ({
+                      color: "#333",
+                      weight: 1,
+                      opacity: 0.8,
+                      fillColor: kategoriGelombang.unknown.color,
+                      fillOpacity: 0.75,
+                    }),
+                    onEachFeature: (feature, layer) => {
+                        const regionId = feature.properties.ID_MAR;  // <-- sama dengan area.id
+                        featureLayersRef.current[regionId] = layer;
+                      }
+                  }).addTo(mapRef.current);
+
+                  // legend
+                  const legend = L.control({ position: "bottomright" });
+                  legend.onAdd = function () {
+                    const div = L.DomUtil.create("div", "info legend");
+                    let labels = ["<strong>Kategori Gelombang</strong>"];
                     for (const category in kategoriGelombang) {
-                        const { color } = kategoriGelombang[category];
-                        const label = category === 'unknown' ? 'Tidak Ada Data' : category;
-                        labels.push(`<i style="background:${color}"></i> ${label}`);
+                      const { color } = kategoriGelombang[category];
+                      const label = category === "unknown" ? "Tidak Ada Data" : category;
+                      labels.push(`<i style="background:${color}"></i> ${label}`);
                     }
-                    div.innerHTML = labels.join('<br>');
+                    div.innerHTML = labels.join("<br>");
                     return div;
-                };
-                legend.addTo(mapRef.current);
-            } catch (error) {
-                console.error("Gagal menginisialisasi peta:", error);
-            }
-        };
+                  };
+                  legend.addTo(mapRef.current);
+                } catch (error) {
+                  console.error("Gagal menginisialisasi peta:", error);
+                }
+              };
 
         if (!window.L || !window.dayjs) {
             const loadScript = (src, id) => new Promise((resolve, reject) => {
@@ -518,7 +527,7 @@ const PerairanPage = ({ theme }) => {
 
     return (
         <div className={`flex flex-col h-[calc(100vh-4rem)] ${theme.glassCardClass} rounded-3xl overflow-hidden`}>
-            <header className={`p-4 z-10 border-b ${theme.border}`}>
+            <header className="p-4 z-10 border-b ${theme.border}">
                 <h1 className={`text-xl font-bold text-center ${theme.text.primary}`}>{mapTitle}</h1>
                 <p className={`text-center text-sm ${theme.text.secondary} mb-3`}>Sumber data: BMKG</p>
 

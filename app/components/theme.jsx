@@ -12,7 +12,8 @@ const lightTheme = {
   glassCardClass: "bg-white/70 border-white/40 shadow-lg rounded-3xl",
   text: { primary: "text-slate-800", secondary: "text-slate-600", placeholder: "placeholder-slate-500" },
   nav: { text: "text-sky-800", hoverBg: "bg-white/50", activeFill: "bg-sky-500/80" },
-  border: "border-slate-800/10"
+  border: "border-slate-800/10",
+  bg: { primary: "bg-white/70", secondary: "bg-white/50", tertiary: "bg-white/30" }
 };
 
 const darkTheme = {
@@ -25,6 +26,7 @@ const darkTheme = {
   glassCardClass: "bg-gray-800/40 border-white/10 shadow-lg rounded-3xl",
   text: { primary: "text-white", secondary: "text-gray-300", placeholder: "placeholder-gray-400" },
   nav: { text: "text-gray-300", hoverBg: "bg-white/10", activeFill: "bg-blue-600/80" },
+  bg: { primary: "bg-gray-800/40", secondary: "bg-gray-800/30", tertiary: "bg-gray-800/20" },
   border: "border-white/10"
 };
 
