@@ -33,7 +33,7 @@ function RunningText({ theme, speed = 90 /* px per second */, gap = 60, pauseOnH
         const infoGempa = data?.info;
         
         if (infoGempa?.description && infoGempa?.instruction) {
-          const combinedText = `--- ${infoGempa.description} --- ${infoGempa.instruction}`;
+          const combinedText = `--- Akses lebih mudah melalui maritim.bmkg.go.id --- ${infoGempa.description} --- ${infoGempa.instruction}`;
           setMessage(combinedText);
         } else {
           setMessage("Format data gempa tidak sesuai.");

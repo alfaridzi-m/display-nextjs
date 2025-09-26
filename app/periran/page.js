@@ -84,7 +84,7 @@ async function fetchAndProcessForecasts(url = 'https://maritim.bmkg.go.id/marine
 }
 
 
-const PerairanPage = ({ theme = darkTheme }) => {
+const PerairanPage = ({ theme = lightTheme }) => {
     const [mapTitle] = useState('Peta Prakiraan Kategori Gelombang');
     const [forecastData, setForecastData] = useState(null);
     const [timeSteps, setTimeSteps] = useState([]);
