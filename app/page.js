@@ -197,6 +197,7 @@ const CitiesPage = ({ theme }) => {
                     .filter(res => res.status === 'fulfilled' && res.value.data)
                     .map(res => res.value.data);
                 setPortData(allData);
+                console.log(allData)
             } catch (err) {
                 console.error("Gagal mengambil data:", err);
             } finally {
@@ -325,7 +326,7 @@ const PerairanPage = ({ theme }) => {
     const [isPlaying, setIsPlaying] = useState(false);
 
     const mapRef = useRef(null);
-    const featureLayersRef = useRef({}); // Ref untuk menyimpan layer poligon
+    const featureLayersRef = useRef({}); 
     const mapContainerRef = useRef(null);
     const intervalRef = useRef(null);
 

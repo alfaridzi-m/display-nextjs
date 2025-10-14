@@ -1,5 +1,5 @@
+'use client';
 import WeatherIcon from "./weather-icon";
-
 
 const KATEGORI_GELOMBANG = {
   Tenang: { color: "bg-[#2793f2]", range: "0 - 0.5 m" },
@@ -92,22 +92,6 @@ const InfoPanel = ({ activeRegions, allForecasts, currentTimeISO, waveCategories
                         })}
                     </div>
                 )}
-            </div>
-
-            {/* Legenda di bagian bawah */}
-            <div className={` mt-6 shrink-0 border-t pt-4 ${theme.border}`}>
-                <h3 className={`text-lg font-semibold ${theme.text.primary} mb-2`}>Legenda Kategori Gelombang</h3>
-                <ul className="flex flex-row flex-wrap">
-                    {Object.entries(waveCategories).map(([category, { color, range }]) => 
-                        category !== 'unknown' && (
-                            <li key={category} className="flex items-center mb-1">
-                                <span className="w-4 h-4 rounded-full mx-3" style={{ backgroundColor: color }}></span>
-                                <span className={`${theme.text.primary} font-semibold w-28`}>{category}</span>
-                                <span className={`${theme.text.secondary}`}>{range}</span>
-                            </li>
-                        )
-                    )}
-                </ul>
             </div>
         </div>
     );

@@ -8,13 +8,14 @@ import "leaflet/dist/leaflet.css";
 import { darkTheme, lightTheme } from "../components/theme";
 import InfoPanel from "../components/infopanel";
 
-// PINDAH: Pindahkan konstanta ke luar komponen agar tidak dibuat ulang setiap render
 dayjs.extend(utc);
 
 // DIUBAH: Konstanta diperbarui sesuai permintaan Anda
 const WILAYAH_AKTIF = ['P.AH.01','P.AH.02','P.AH.03','P.AH.04','P.AH.05','P.AH.06','P.AH.07','P.AH.08','P.AH.09',];
-const view_point = [-3.2186, 128.675107];
-const initial_zoom = 8;
+const view_point = [-3.2186, 128.9];
+const initial_zoom = 7.4;
+const Your_location = [-3.69375, 128.17733];
+
 
 const KATEGORI_GELOMBANG = {
   Tenang: { color: "#2793f2", range: "0 - 0.5 m" },
@@ -162,6 +163,10 @@ const PerairanPage = ({ theme = lightTheme }) => {
             L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
                 attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
             }).addTo(mapRef.current);
+            L.marker(Your_location).addTo(mapRef.current)
+                .bindPopup('Lokasi Anda')
+                .openPopup();
+                
 
             try {
                 const geojsonData = await fetch("/wilpro.geojson").then(res => res.json());
@@ -173,7 +178,7 @@ const PerairanPage = ({ theme = lightTheme }) => {
 
                 L.geoJSON(geojsonData, {
                     style: feature => ({
-                        color: "#333",
+                        color: "#ffffffff",
                         weight: WILAYAH_AKTIF.includes(feature.properties.ID_MAR) ? 1.5 : 0.5,
                         opacity: 0.8,
                         fillColor: KATEGORI_GELOMBANG.unknown.color,
