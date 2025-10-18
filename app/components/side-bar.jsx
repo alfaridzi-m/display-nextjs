@@ -90,7 +90,7 @@ const Sidebar = ({ activePage, handleNavClick, isDarkMode, setIsDarkMode, pageDu
         <nav className="w-full md:w-auto flex-grow flex flex-row md:flex-col justify-around md:justify-start md:items-center">
           <NavItem icon={Cloud} label="Cuaca" isActive={activePage === 'weather'} onClick={() => handleNavClick('weather')} animationDuration={pageDurations.weather / 1000} theme={theme}/>
           <NavItem icon={Anchor} label="Pelabuhan" isActive={activePage === 'cities'} onClick={() => handleNavClick('cities')} animationDuration={pageDurations.cities / 1000} theme={theme}/>
-          <NavItem icon={Map} label="Perairan" isActive={activePage === 'Perairan'} onClick={() => handleNavClick('Perairan')} animationDuration={pageDurations.map / 1000} theme={theme}/>
+          <NavItem icon={Map} label="Perairan" isActive={activePage === 'Perairan'} onClick={() => handleNavClick('Perairan')} animationDuration={pageDurations.Perairan / 1000} theme={theme}/>
         </nav>
         <div className="hidden md:flex mt-auto">
              <button onClick={() => setIsDarkMode(!isDarkMode)} className={`p-3 rounded-full transition-colors ${theme.nav.text} hover:${theme.nav.hoverBg}`}>
