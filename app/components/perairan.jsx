@@ -139,13 +139,16 @@ const PerairanPage = ({ theme, isActive }) => {
     const [labelOffset, setLabelOffset] = useState({ lat: -0.05, lng: 0.05 });
     const [showLabelSettings, setShowLabelSettings] = useState(false); // Toggle settings panel
     const [individualPositions, setIndividualPositions] = useState({});
+    const [connectorStartPositions, setConnectorStartPositions] = useState({}); // Store custom connector start points
     
     const [isDraggingMode, setIsDraggingMode] = useState(false); // Enable/disable dragging mode
     
     // Legend position state - start with default to avoid hydration mismatch
     const [legendPosition, setLegendPosition] = useState({ bottom: 8, right: 8 });
+    const [legendSize, setLegendSize] = useState({ width: 'auto', height: 'auto' });
     
     const [isDraggingLegend, setIsDraggingLegend] = useState(false);
+    const [isResizingLegend, setIsResizingLegend] = useState(false);
     const [isHydrated, setIsHydrated] = useState(false);
 
     const mapRef = useRef(null);
@@ -154,8 +157,12 @@ const PerairanPage = ({ theme, isActive }) => {
     const mapContainerRef = useRef(null);
     const intervalRef = useRef(null);
     const labelLayersRef = useRef({});
+    const connectorLinesRef = useRef({}); // Store connector lines
+    const connectorStartMarkersRef = useRef({}); // Store connector start point markers
+    const connectorEndMarkersRef = useRef({}); // Store connector end point markers
     const legendRef = useRef(null);
     const dragOffsetRef = useRef({ x: 0, y: 0 });
+    const resizeStartRef = useRef({ width: 0, height: 0, x: 0, y: 0 });
 
     // Weather icon mapping - moved outside for reuse
     const weatherIcons = {
@@ -212,9 +219,121 @@ const PerairanPage = ({ theme, isActive }) => {
         `;
     }, [isDraggingMode]);
 
+    // Function to create/update connector line from polygon center to label
+    const updateConnectorLine = useCallback((L, regionId, startPos, labelPos, waveColor) => {
+        if (!mapRef.current) return;
+        
+        // Remove old line if exists
+        if (connectorLinesRef.current[regionId]) {
+            mapRef.current.removeLayer(connectorLinesRef.current[regionId]);
+        }
+        
+        // Remove old start marker if exists
+        if (connectorStartMarkersRef.current[regionId]) {
+            mapRef.current.removeLayer(connectorStartMarkersRef.current[regionId]);
+        }
+        
+        // Remove old end marker if exists
+        if (connectorEndMarkersRef.current[regionId]) {
+            mapRef.current.removeLayer(connectorEndMarkersRef.current[regionId]);
+        }
+        
+        // Create new line with wave category color - solid and bold
+        const lineColor = waveColor || '#3b82f6';
+        const line = L.polyline([startPos, labelPos], {
+            color: lineColor,
+            weight: 3,
+            opacity: 0.8,
+            className: 'connector-line'
+        });
+        
+        line.addTo(mapRef.current);
+        connectorLinesRef.current[regionId] = line;
+        
+        // Create circle marker at the start point (center polygon)
+        const endMarker = L.circleMarker(startPos, {
+            radius: 5,
+            fillColor: lineColor,
+            color: '#ffffff',
+            weight: 2,
+            opacity: 1,
+            fillOpacity: 1,
+            interactive: false
+        });
+        
+        endMarker.addTo(mapRef.current);
+        connectorEndMarkersRef.current[regionId] = endMarker;
+        
+        // Create draggable marker at the start point (only in drag mode)
+        if (isDraggingMode) {
+            // Create a custom div icon for the connector point
+            const connectorIcon = L.divIcon({
+                html: `<div style="
+                    width: 12px;
+                    height: 12px;
+                    background-color: ${lineColor};
+                    border: 2px solid #ffffff;
+                    border-radius: 50%;
+                    box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+                    cursor: move;
+                "></div>`,
+                className: '',
+                iconSize: [12, 12],
+                iconAnchor: [6, 6]
+            });
+            
+            const startMarker = L.marker(startPos, {
+                icon: connectorIcon,
+                draggable: true,
+                autoPan: true
+            });
+            
+            // Update line while dragging start point
+            startMarker.on('drag', function(e) {
+                const newStartPos = e.target.getLatLng();
+                line.setLatLngs([newStartPos, labelPos]);
+            });
+            
+            // Save new start position on drag end
+            startMarker.on('dragend', function(e) {
+                const newStartPos = e.target.getLatLng();
+                setConnectorStartPositions(prev => ({
+                    ...prev,
+                    [regionId]: [newStartPos.lat, newStartPos.lng]
+                }));
+            });
+            
+            startMarker.addTo(mapRef.current);
+            connectorStartMarkersRef.current[regionId] = startMarker;
+        }
+    }, [isDraggingMode]);
+
     // Function to create meteorological info label for each region
-    const createMeteoLabel = useCallback((L, regionId, forecast, bounds, position = 'top-left', offset = { lat: -0.05, lng: 0.05 }, customPosition = null) => {
+    const createMeteoLabel = useCallback((L, regionId, forecast, bounds, position = 'top-left', offset = { lat: -0.05, lng: 0.05 }, customPosition = null, layer = null) => {
         if (!forecast) return null;
+        
+        // Calculate polygon centroid (center of mass) for connector line
+        let defaultCenter;
+        if (layer && layer.getLatLngs) {
+            // Calculate centroid of polygon
+            const latlngs = layer.getLatLngs()[0]; // Get first ring of coordinates
+            let latSum = 0, lngSum = 0, count = 0;
+            latlngs.forEach(latlng => {
+                latSum += latlng.lat;
+                lngSum += latlng.lng;
+                count++;
+            });
+            defaultCenter = [latSum / count, lngSum / count];
+        } else {
+            // Fallback to bounds center
+            defaultCenter = bounds.getCenter();
+        }
+        
+        // Use custom connector start position if available, otherwise use calculated center
+        const startPos = connectorStartPositions[regionId] || defaultCenter;
+        
+        // Get wave category color
+        const waveColor = getColorForWaveCategory(forecast.wave_cat);
         
         // Use custom position if available (for individually moved labels)
         if (customPosition) {
@@ -232,13 +351,23 @@ const PerairanPage = ({ theme, isActive }) => {
                 interactive: isDraggingMode
             });
             
+            // Create connector line with wave color
+            updateConnectorLine(L, regionId, startPos, customPosition, waveColor);
+            
             if (isDraggingMode) {
+                // Update line while dragging
+                marker.on('drag', function(e) {
+                    const newPos = e.target.getLatLng();
+                    updateConnectorLine(L, regionId, startPos, [newPos.lat, newPos.lng], waveColor);
+                });
+                
                 marker.on('dragend', function(e) {
                     const newPos = e.target.getLatLng();
                     setIndividualPositions(prev => ({
                         ...prev,
                         [regionId]: [newPos.lat, newPos.lng]
                     }));
+                    updateConnectorLine(L, regionId, startPos, [newPos.lat, newPos.lng], waveColor);
                 });
             }
             
@@ -248,7 +377,7 @@ const PerairanPage = ({ theme, isActive }) => {
         // Get polygon bounds
         const northWest = bounds.getNorthWest();
         const southEast = bounds.getSouthEast();
-        const center = bounds.getCenter();
+        const boundsCenter = bounds.getCenter();
         
         // Calculate label position and anchor based on selected position
         let labelLatLng;
@@ -272,23 +401,23 @@ const PerairanPage = ({ theme, isActive }) => {
                 anchor = [90, 80];
                 break;
             case 'center':
-                labelLatLng = [center.lat + offset.lat, center.lng + offset.lng];
+                labelLatLng = [boundsCenter.lat + offset.lat, boundsCenter.lng + offset.lng];
                 anchor = [45, 40];
                 break;
             case 'top-center':
-                labelLatLng = [northWest.lat + offset.lat, center.lng + offset.lng];
+                labelLatLng = [northWest.lat + offset.lat, boundsCenter.lng + offset.lng];
                 anchor = [45, 0];
                 break;
             case 'bottom-center':
-                labelLatLng = [southEast.lat + offset.lat, center.lng + offset.lng];
+                labelLatLng = [southEast.lat + offset.lat, boundsCenter.lng + offset.lng];
                 anchor = [45, 80];
                 break;
             case 'left-center':
-                labelLatLng = [center.lat + offset.lat, northWest.lng + offset.lng];
+                labelLatLng = [boundsCenter.lat + offset.lat, northWest.lng + offset.lng];
                 anchor = [0, 40];
                 break;
             case 'right-center':
-                labelLatLng = [center.lat + offset.lat, southEast.lng + offset.lng];
+                labelLatLng = [boundsCenter.lat + offset.lat, southEast.lng + offset.lng];
                 anchor = [90, 40];
                 break;
             default:
@@ -311,18 +440,28 @@ const PerairanPage = ({ theme, isActive }) => {
             interactive: isDraggingMode
         });
         
+        // Create connector line with wave color
+        updateConnectorLine(L, regionId, startPos, labelLatLng, waveColor);
+        
         if (isDraggingMode) {
+            // Update line while dragging
+            marker.on('drag', function(e) {
+                const newPos = e.target.getLatLng();
+                updateConnectorLine(L, regionId, startPos, [newPos.lat, newPos.lng], waveColor);
+            });
+            
             marker.on('dragend', function(e) {
                 const newPos = e.target.getLatLng();
                 setIndividualPositions(prev => ({
                     ...prev,
                     [regionId]: [newPos.lat, newPos.lng]
                 }));
+                updateConnectorLine(L, regionId, startPos, [newPos.lat, newPos.lng], waveColor);
             });
         }
         
         return marker;
-    }, [isDraggingMode, createLabelHTML, setIndividualPositions]);
+    }, [isDraggingMode, createLabelHTML, setIndividualPositions, updateConnectorLine, connectorStartPositions]);
 
     // Tooltip styles removed since region ID center labels are no longer used
 
@@ -357,13 +496,22 @@ const PerairanPage = ({ theme, isActive }) => {
             const forecast = forecastData[regionId]?.find(f => f.time.toISOString() === actualTimeISO);
             
             if (forecast && labelLayersRef.current[regionId]) {
-                // Remove old label
+                // Remove old label and connector line
                 mapRef.current.removeLayer(labelLayersRef.current[regionId]);
+                if (connectorLinesRef.current[regionId]) {
+                    mapRef.current.removeLayer(connectorLinesRef.current[regionId]);
+                }
+                if (connectorStartMarkersRef.current[regionId]) {
+                    mapRef.current.removeLayer(connectorStartMarkersRef.current[regionId]);
+                }
+                if (connectorEndMarkersRef.current[regionId]) {
+                    mapRef.current.removeLayer(connectorEndMarkersRef.current[regionId]);
+                }
                 
                 // Create and add new label with current position settings or individual position
                 const bounds = layer.getBounds();
                 const customPos = individualPositions[regionId];
-                const newLabel = createMeteoLabel(L, regionId, forecast, bounds, labelPosition, labelOffset, customPos);
+                const newLabel = createMeteoLabel(L, regionId, forecast, bounds, labelPosition, labelOffset, customPos, layer);
                 if (newLabel) {
                     newLabel.addTo(mapRef.current);
                     labelLayersRef.current[regionId] = newLabel;
@@ -394,6 +542,16 @@ const PerairanPage = ({ theme, isActive }) => {
             const savedLegendPos = localStorage.getItem('legendPosition');
             if (savedLegendPos) {
                 setLegendPosition(JSON.parse(savedLegendPos));
+            }
+            
+            const savedLegendSize = localStorage.getItem('legendSize');
+            if (savedLegendSize) {
+                setLegendSize(JSON.parse(savedLegendSize));
+            }
+            
+            const savedConnectorStarts = localStorage.getItem('connectorStartPositions');
+            if (savedConnectorStarts) {
+                setConnectorStartPositions(JSON.parse(savedConnectorStarts));
             }
         }
     }, []);
@@ -483,10 +641,11 @@ const PerairanPage = ({ theme, isActive }) => {
                 WILAYAH_AKTIF.forEach(regionId => {
                     const feature = geojsonData.features.find(f => f.properties.ID_MAR === regionId);
                     if (feature && featureLayersRef.current[regionId]) {
-                        const bounds = featureLayersRef.current[regionId].getBounds();
+                        const layer = featureLayersRef.current[regionId];
+                        const bounds = layer.getBounds();
                         const forecast = forecastData[regionId]?.[0];
                         const customPos = individualPositions[regionId];
-                        const label = createMeteoLabel(L, regionId, forecast, bounds, labelPosition, labelOffset, customPos);
+                        const label = createMeteoLabel(L, regionId, forecast, bounds, labelPosition, labelOffset, customPos, layer);
                         if (label) {
                             label.addTo(mapRef.current);
                             labelLayersRef.current[regionId] = label;
@@ -575,8 +734,17 @@ const PerairanPage = ({ theme, isActive }) => {
         // Re-create all labels with new position settings
         WILAYAH_AKTIF.forEach(regionId => {
             if (labelLayersRef.current[regionId]) {
-                // Remove old label
+                // Remove old label and connector line
                 mapRef.current.removeLayer(labelLayersRef.current[regionId]);
+                if (connectorLinesRef.current[regionId]) {
+                    mapRef.current.removeLayer(connectorLinesRef.current[regionId]);
+                }
+                if (connectorStartMarkersRef.current[regionId]) {
+                    mapRef.current.removeLayer(connectorStartMarkersRef.current[regionId]);
+                }
+                if (connectorEndMarkersRef.current[regionId]) {
+                    mapRef.current.removeLayer(connectorEndMarkersRef.current[regionId]);
+                }
                 
                 // Get current forecast
                 const currentTime = sixHourlyTimeSteps[currentTimeIndex];
@@ -584,9 +752,10 @@ const PerairanPage = ({ theme, isActive }) => {
                 const forecast = forecastData[regionId]?.find(f => f.time.toISOString() === actualTimeISO);
                 
                 if (forecast && featureLayersRef.current[regionId]) {
-                    const bounds = featureLayersRef.current[regionId].getBounds();
+                    const layer = featureLayersRef.current[regionId];
+                    const bounds = layer.getBounds();
                     const customPos = individualPositions[regionId];
-                    const newLabel = createMeteoLabel(L, regionId, forecast, bounds, labelPosition, labelOffset, customPos);
+                    const newLabel = createMeteoLabel(L, regionId, forecast, bounds, labelPosition, labelOffset, customPos, layer);
                     if (newLabel) {
                         newLabel.addTo(mapRef.current);
                         labelLayersRef.current[regionId] = newLabel;
@@ -617,12 +786,26 @@ const PerairanPage = ({ theme, isActive }) => {
         }
     }, [individualPositions]);
     
+    // Save connectorStartPositions to localStorage whenever they change
+    useEffect(() => {
+        if (typeof window !== 'undefined') {
+            localStorage.setItem('connectorStartPositions', JSON.stringify(connectorStartPositions));
+        }
+    }, [connectorStartPositions]);
+    
     // Save legendPosition to localStorage whenever it changes
     useEffect(() => {
         if (typeof window !== 'undefined') {
             localStorage.setItem('legendPosition', JSON.stringify(legendPosition));
         }
     }, [legendPosition]);
+    
+    // Save legendSize to localStorage whenever it changes
+    useEffect(() => {
+        if (typeof window !== 'undefined') {
+            localStorage.setItem('legendSize', JSON.stringify(legendSize));
+        }
+    }, [legendSize]);
     
     // Handle legend dragging
     useEffect(() => {
@@ -662,7 +845,47 @@ const PerairanPage = ({ theme, isActive }) => {
             };
         }
     }, [isDraggingMode, isDraggingLegend]);
+    
+    // Handle legend resizing
+    useEffect(() => {
+        if (!isDraggingMode) return;
+        
+        const handleMouseMove = (e) => {
+            if (!isResizingLegend) return;
+            
+            const deltaX = e.clientX - resizeStartRef.current.x;
+            const deltaY = resizeStartRef.current.y - e.clientY; // Inverted because we're measuring from bottom
+            
+            const newWidth = Math.max(150, resizeStartRef.current.width + deltaX);
+            const newHeight = Math.max(100, resizeStartRef.current.height + deltaY);
+            
+            setLegendSize({
+                width: `${newWidth}px`,
+                height: `${newHeight}px`
+            });
+        };
+        
+        const handleMouseUp = () => {
+            setIsResizingLegend(false);
+        };
+        
+        if (isResizingLegend) {
+            window.addEventListener('mousemove', handleMouseMove);
+            window.addEventListener('mouseup', handleMouseUp);
+            
+            return () => {
+                window.removeEventListener('mousemove', handleMouseMove);
+                window.removeEventListener('mouseup', handleMouseUp);
+            };
+        }
+    }, [isDraggingMode, isResizingLegend]);
 
+    // Pause animation when drag mode is activated
+    useEffect(() => {
+        if (isDraggingMode && isPlaying) {
+            setIsPlaying(false);
+        }
+    }, [isDraggingMode]);
 
     useEffect(() => {
         if (isPlaying) {
@@ -732,10 +955,16 @@ const PerairanPage = ({ theme, isActive }) => {
                             style={{
                                 bottom: `${legendPosition.bottom}px`,
                                 right: `${legendPosition.right}px`,
-                                cursor: isDraggingMode ? 'move' : 'default'
+                                cursor: isDraggingMode && !isResizingLegend ? 'move' : 'default',
+                                width: legendSize.width,
+                                height: legendSize.height,
+                                minWidth: '150px',
+                                minHeight: '100px'
                             }}
                             onMouseDown={(e) => {
                                 if (!isDraggingMode) return;
+                                // Only start dragging if not clicking on resize handle
+                                if (e.target.classList.contains('resize-handle')) return;
                                 e.preventDefault();
                                 setIsDraggingLegend(true);
                                 
@@ -746,22 +975,83 @@ const PerairanPage = ({ theme, isActive }) => {
                                 };
                             }}
                         >
-                            <div className={`bg-white/80 backdrop-blur rounded-md p-2 shadow border ${isDraggingMode ? 'border-blue-400 ring-2 ring-blue-300' : 'border-white/30 dark:border-white/10'} max-w-xs transition-all`}>
-                                <div className={`text-[11px] font-semibold mb-1 ${theme.text.primary} flex items-center justify-between`}>
+                            <div className={`relative bg-white/80 backdrop-blur rounded-md p-3 shadow border ${isDraggingMode ? 'border-blue-400 ring-2 ring-blue-300' : 'border-white/30 dark:border-white/10'} transition-all h-full flex flex-col`}>
+                                <div className={`text-base font-semibold mb-2 ${theme.text.primary} flex items-center justify-between shrink-0`}>
                                     <span>Legenda Gelombang</span>
-                                    {isDraggingMode && <span className="text-blue-500">📍</span>}
+                                    {isDraggingMode && <span className="text-xl">📍</span>}
                                 </div>
-                                <ul className="space-y-1">
+                                <ul className="space-y-2 overflow-y-auto flex-1">
                                     {Object.entries(KATEGORI_GELOMBANG).filter(([k]) => k !== 'unknown').map(([category, { color, range }]) => (
-                                        <li key={category} className="flex items-center justify-between gap-2 text-[11px]">
+                                        <li key={category} className="flex items-center justify-between gap-3 text-sm">
                                             <div className="flex items-center gap-2">
-                                                <span className="w-3.5 h-3.5 rounded-full" style={{ backgroundColor: color }}></span>
-                                                <span className={`${theme.text.primary}`}>{category}</span>
+                                                <span className="w-5 h-5 rounded-full flex-shrink-0" style={{ backgroundColor: color }}></span>
+                                                <span className={`${theme.text.primary} font-medium`}>{category}</span>
                                             </div>
-                                            <span className={`${theme.text.secondary}`}>{range}</span>
+                                            <span className={`${theme.text.secondary} text-right font-medium`}>{range}</span>
                                         </li>
                                     ))}
                                 </ul>
+                                
+                                {/* Resize handles - only show in drag mode */}
+                                {isDraggingMode && (
+                                    <>
+                                        {/* Bottom-right corner resize handle */}
+                                        <div
+                                            className="resize-handle absolute bottom-0 right-0 w-5 h-5 cursor-nwse-resize bg-blue-500 hover:bg-blue-600 rounded-tl"
+                                            style={{ borderBottomRightRadius: '0.375rem' }}
+                                            onMouseDown={(e) => {
+                                                e.stopPropagation();
+                                                e.preventDefault();
+                                                setIsResizingLegend(true);
+                                                const rect = legendRef.current.getBoundingClientRect();
+                                                resizeStartRef.current = {
+                                                    width: rect.width,
+                                                    height: rect.height,
+                                                    x: e.clientX,
+                                                    y: e.clientY
+                                                };
+                                            }}
+                                        >
+                                            <div className="w-full h-full flex items-center justify-center text-white text-xs font-bold">
+                                                ⇲
+                                            </div>
+                                        </div>
+                                        
+                                        {/* Right edge resize handle */}
+                                        <div
+                                            className="resize-handle absolute right-0 top-1/2 -translate-y-1/2 w-2.5 h-16 cursor-ew-resize bg-blue-500 hover:bg-blue-600 rounded-l"
+                                            onMouseDown={(e) => {
+                                                e.stopPropagation();
+                                                e.preventDefault();
+                                                setIsResizingLegend(true);
+                                                const rect = legendRef.current.getBoundingClientRect();
+                                                resizeStartRef.current = {
+                                                    width: rect.width,
+                                                    height: rect.height,
+                                                    x: e.clientX,
+                                                    y: e.clientY
+                                                };
+                                            }}
+                                        />
+                                        
+                                        {/* Bottom edge resize handle */}
+                                        <div
+                                            className="resize-handle absolute bottom-0 left-1/2 -translate-x-1/2 w-16 h-2.5 cursor-ns-resize bg-blue-500 hover:bg-blue-600 rounded-t"
+                                            onMouseDown={(e) => {
+                                                e.stopPropagation();
+                                                e.preventDefault();
+                                                setIsResizingLegend(true);
+                                                const rect = legendRef.current.getBoundingClientRect();
+                                                resizeStartRef.current = {
+                                                    width: rect.width,
+                                                    height: rect.height,
+                                                    x: e.clientX,
+                                                    y: e.clientY
+                                                };
+                                            }}
+                                        />
+                                    </>
+                                )}
                             </div>
                         </div>
                         
@@ -831,7 +1121,7 @@ const PerairanPage = ({ theme, isActive }) => {
                                             </div>
                                             {isDraggingMode && (
                                                 <div className="text-[9px] text-amber-600 bg-amber-50 p-1.5 rounded mb-2">
-                                                    💡 Seret label dan legenda untuk memindahkan posisi
+                                                    💡 Seret label, legenda, dan titik penghubung (bulat kecil) untuk memindahkan posisi
                                                 </div>
                                             )}
                                             <button
@@ -843,9 +1133,22 @@ const PerairanPage = ({ theme, isActive }) => {
                                             </button>
                                             <button
                                                 onClick={() => setLegendPosition({ bottom: 8, right: 8 })}
-                                                className="w-full text-xs px-2 py-1 rounded bg-orange-500 text-white hover:bg-orange-600"
+                                                className="w-full text-xs px-2 py-1 rounded bg-orange-500 text-white hover:bg-orange-600 mb-1"
                                             >
                                                 Reset Posisi Legenda
+                                            </button>
+                                            <button
+                                                onClick={() => setLegendSize({ width: 'auto', height: 'auto' })}
+                                                className="w-full text-xs px-2 py-1 rounded bg-teal-500 text-white hover:bg-teal-600 mb-1"
+                                            >
+                                                Reset Ukuran Legenda
+                                            </button>
+                                            <button
+                                                onClick={() => setConnectorStartPositions({})}
+                                                disabled={Object.keys(connectorStartPositions).length === 0}
+                                                className="w-full text-xs px-2 py-1 rounded bg-purple-500 text-white hover:bg-purple-600 disabled:bg-gray-300 disabled:text-gray-500"
+                                            >
+                                                Reset Titik Garis ({Object.keys(connectorStartPositions).length})
                                             </button>
                                         </div>
                                         
@@ -892,12 +1195,16 @@ const PerairanPage = ({ theme, isActive }) => {
                                                     setLabelPosition('top-left');
                                                     setLabelOffset({ lat: -0.05, lng: 0.05 });
                                                     setIndividualPositions({});
+                                                    setConnectorStartPositions({});
                                                     setLegendPosition({ bottom: 8, right: 8 });
+                                                    setLegendSize({ width: 'auto', height: 'auto' });
                                                     if (typeof window !== 'undefined') {
                                                         localStorage.removeItem('labelPosition');
                                                         localStorage.removeItem('labelOffset');
                                                         localStorage.removeItem('individualPositions');
+                                                        localStorage.removeItem('connectorStartPositions');
                                                         localStorage.removeItem('legendPosition');
+                                                        localStorage.removeItem('legendSize');
                                                     }
                                                 }}
                                                 className="w-full text-xs px-2 py-1.5 rounded bg-purple-500 text-white hover:bg-purple-600 font-semibold"
