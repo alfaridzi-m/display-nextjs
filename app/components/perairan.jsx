@@ -210,7 +210,7 @@ const PerairanPage = ({ theme, isActive }) => {
                     ${forecast.wave_height}m
                 </div>
                 <div style="font-size: 13px; font-weight: 600; color: #374151; margin-top: 3px;">
-                    🌬️ ${forecast.wind_speed}kt
+                    ${forecast.wind_speed}kt
                 </div>
                 <div style="font-size: 10px; color: #6b7280; margin-top: 1px;">
                     ${forecast.wind_from}
@@ -567,6 +567,11 @@ const PerairanPage = ({ theme, isActive }) => {
             // Store Leaflet instance in ref for use in other functions
             leafletRef.current = L;
 
+            // Check if the container already has a map instance and remove it
+            if (mapContainerRef.current._leaflet_id) {
+                mapContainerRef.current._leaflet_id = undefined;
+            }
+
             delete L.Icon.Default.prototype._getIconUrl;
             L.Icon.Default.mergeOptions({
                 iconRetinaUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon-2x.png',
@@ -616,6 +621,8 @@ const PerairanPage = ({ theme, isActive }) => {
                 const { summaries, timeSteps: sixSteps } = summarizeForecastsEvery6Hours(forecastData);
                 setSixHourlySummary(summaries);
                 setSixHourlyTimeSteps(sixSteps);
+                console.log("sixHourlyTimeSteps:", sixSteps);
+                console.log("sixHourlySummary:", summaries);
 
                 const geoJsonLayer = L.geoJSON(geojsonData, {
                     style: feature => ({
@@ -667,6 +674,10 @@ const PerairanPage = ({ theme, isActive }) => {
             if (mapRef.current) {
                 mapRef.current.remove();
                 mapRef.current = null;
+            }
+            // Clean up the container's Leaflet ID
+            if (mapContainerRef.current && mapContainerRef.current._leaflet_id) {
+                mapContainerRef.current._leaflet_id = undefined;
             }
         };
     }, []);
