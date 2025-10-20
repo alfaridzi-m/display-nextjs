@@ -91,7 +91,7 @@ const PetaPage = ({ theme = {} }) => {
                     <div className={`p-4 border-b ${theme.border || 'border-white/10'}`}>
                         <h2 className={`text-xl font-semibold ${theme.text?.primary || 'text-white'} flex items-center gap-2`}>
                             <Map className="w-5 h-5" />
-                            Wilayah Pelabuhan Indonesia
+                            Gelombang Signifikan Wilayah Indonesia
                         </h2>
                         <p className={`text-sm ${theme.text?.secondary || 'text-gray-300'} mt-1`}>
                             Animasi prakiraan cuaca wilayah pelabuhan
