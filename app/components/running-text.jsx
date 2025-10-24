@@ -14,7 +14,7 @@ import React, { useEffect, useRef, useState } from "react";
  * @param {number} gap - The gap between repeated text elements in pixels.
  * @param {boolean} pauseOnHover - Whether to pause the animation on mouse hover.
  */
-function RunningText({ theme, speed = 90 /* px per second */, gap = 60, pauseOnHover = true }) {
+function RunningText({ theme, speed = 90 /* px per second */, gap = 10, pauseOnHover = true }) {
   const [message, setMessage] = useState("Memuat informasi gempa terkini...");
   const [animationDuration, setAnimationDuration] = useState(20); // A sensible default duration
 

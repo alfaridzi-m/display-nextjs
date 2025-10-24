@@ -127,7 +127,7 @@ const TidesCard = ({ code, height = 360, className = "", dataOverride, theme }) 
     g.append("text").attr("x", innerW).attr("y", innerH + 36).attr("text-anchor", "end").attr("class", `fill-current ${theme.text.secondary} text-xs`).text("Waktu");
 
     g.append("path").datum(points).attr("fill", "rgba(128, 128, 128, 0.2)").attr("stroke", "none").attr("d", area);
-    g.append("path").datum(points).attr("fill", "none").attr("stroke", "#666666").attr("stroke-width", 1).attr("d", line);
+    g.append("path").datum(points).attr("fill", "none").attr("stroke", "#666666").attr("stroke-width", 2).attr("d", line);
 
     const tooltip = d3.select(containerRef.current).append("div").attr("class", `absolute pointer-events-none backdrop-blur px-3 py-2 rounded-xl shadow-lg border ${theme.border} ${theme.text.primary}`).style("opacity", 0).style("background-color", theme === lightTheme ? 'rgba(255, 255, 255, 0.8)' : 'rgba(31, 41, 55, 0.8)');
     const focusDot = g.append("circle").attr("r", 3.5).attr("fill", "#1d4ed8").attr("stroke", "white").attr("stroke-width", 1.5).style("opacity", 0);
@@ -162,7 +162,7 @@ const TidesCard = ({ code, height = 360, className = "", dataOverride, theme }) 
     <div className={`w-full h-full flex flex-col ${className}`}>
         <div className="flex items-center justify-between gap-3 mb-2 px-2">
             <div>
-                <h2 className={`text-2xl font-bold ${theme.text.primary}`}>Grafik Pasang Surut</h2>
+                <h2 className={`text-2xl font-bold ${theme.nav.text}`}>Grafik Pasang Surut</h2>
             </div>
         </div>
         <div ref={containerRef} className="relative w-full">

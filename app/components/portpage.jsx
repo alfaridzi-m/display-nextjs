@@ -94,7 +94,7 @@ const PortPage = ({ theme }) => {
             waveCategory: waveCategoryForMax,
         };
     };
-
+    
     const portsOnCurrentPage = portData.slice(
         currentPage * portsPerPage,
         (currentPage + 1) * portsPerPage
@@ -122,6 +122,8 @@ const PortPage = ({ theme }) => {
                                             targetDate.setUTCDate(startDate.getUTCDate() + dayIndex);
                                             const targetDateString = targetDate.toISOString().split('T')[0];
                                             const summary = getDailySummary(port, targetDateString);
+                                            
+                                            console.log(`Summary for ${port.name} - ${label} (${targetDateString}):`, summary);
 
                                             if (!summary) {
                                                 return <div key={`${port.code}-${dayIndex}`} className={`text-xs ${theme.text.secondary} text-center`}>Data tidak tersedia</div>;

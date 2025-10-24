@@ -9,14 +9,14 @@ import RunningText from '../components/running-text';
 import { lightTheme, darkTheme } from '../components/theme';
 import PerairanPage from '../components/perairan';
 import PetaPage from '../components/petaPage';
-
+import TopBar from '../components/top-bar';
 
 const Display = () => {
   const pages = ['weather', 'cities', 'Perairan', 'Peta'];
   const portIds = ['AA005', 'AA003', 'AA006','AA007','AA001'];
   const pageDurations = {
-    weather: 15000 * portIds.length,
-    cities: 30000,
+    weather: 1500000 * portIds.length,
+    cities: 300000,
     Perairan: 1500000,
     Peta: 6000000,
   }
@@ -33,7 +33,7 @@ const Display = () => {
       const height = window.innerHeight;
       setScreenSize({ width, height });
       
-      const isValid = width >= 1880 && width <= 1950 && height >= 1020 && height <= 1250;
+      const isValid = width >= 1880 && width <= 1950 && height >= 950 && height <= 1250;
       setIsScreenSizeValid(isValid);
     };
 
@@ -101,8 +101,11 @@ const Display = () => {
         <div className={`absolute bottom-[-10%] right-[-10%] w-96 h-96 rounded-full filter blur-3xl opacity-70 animate-blob animation-delay-4000 ${theme.overlay2}`}></div>
 
         <Sidebar activePage={activePage} handleNavClick={handleNavClick} isDarkMode={isDarkMode} setIsDarkMode={setIsDarkMode} pageDurations={pageDurations} />
-        <main className="flex-1 p-4 sm:p-6 lg:p-8 pb-28 md:pb-8 overflow-y-auto z-10">
-          
+        <TopBar isDarkMode={isDarkMode} setIsDarkMode={setIsDarkMode} />
+
+
+        <main className="flex-1 p-4 sm:p-6 lg:p-8 pb-28 md:pb-8 pt-20 md:pt-15 lg:pt-18 overflow-y-auto z-10">
+
         <div>
         <div style={{ display: activePage === 'weather' ? 'block' : 'none' }}>
             <WeatherPage theme={theme} list={portIds} />

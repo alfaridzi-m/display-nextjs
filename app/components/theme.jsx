@@ -10,7 +10,7 @@ const lightTheme = {
   overlay2: "bg-sky-400/30",
   sidebar: "bg-sky-100/20 border-white/30",
   glassCardClass: "bg-white/70 border-white/40 shadow-lg rounded-3xl",
-  text: { primary: "text-slate-800", secondary: "text-slate-600", placeholder: "placeholder-slate-500" },
+  text: { primary: "text-slate-900", secondary: "text-slate-900", placeholder: "placeholder-slate-500" },
   nav: { text: "text-sky-800", hoverBg: "bg-white/50", activeFill: "bg-sky-500/80" },
   border: "border-slate-800/10",
   bg: { primary: "bg-white/70", secondary: "bg-white/50", tertiary: "bg-white/30" }

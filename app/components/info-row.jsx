@@ -1,11 +1,11 @@
-import { Wind, Droplets, Compass,Activity,Thermometer, Navigation, Waves } from 'lucide-react';
-export default function InfoRow({ icon: Icon, label, value, sub, big = false, theme }) {
+import { Wind, Droplets, Compass,Activity,Thermometer, Navigation2 , Waves } from 'lucide-react';
+export default function InfoRow({ icon: Icon, label, value, sub, big = false, theme, customIcon, waveColor }) {
   return (
     <div className="flex flex-col items-center justify-center text-center flex-1 p-2">
-      <p className={`text-sm ${theme.text.secondary}`}>{label}</p>
-      <Icon className={`mb-2 ${big ? "w-12 h-12" : "w-8 h-8"} ${theme.text.secondary}`} />
+      <p className={`text-md ${theme.text.secondary}`}>{label}</p>
+      {customIcon ? customIcon : <Icon className={`mb-2 ${big ? "w-12 h-12" : "w-8 h-8"} ${waveColor || theme.text.secondary}`} />}
+      {sub && <p className={`text-md ${theme.text.secondary} mb-1`}>{sub}</p>}
       <p className={`${big ? "text-2xl" : "text-base"} font-bold ${theme.text.primary}`}>{value}</p>
-      {sub && <p className={`text-xs ${theme.text.secondary}`}>{sub}</p>}
     </div>
   );
 }

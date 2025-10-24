@@ -7,7 +7,7 @@ import utc from 'dayjs/plugin/utc';
 dayjs.extend(utc);
 
 // DIUBAH: Konstanta diperbarui sesuai permintaan Anda
-const WILAYAH_AKTIF = ['P.AH.01','P.AH.02','P.AH.03','P.AH.04','P.AH.05','P.AH.06','P.AH.07','P.AH.08','P.AH.09',];
+const WILAYAH_AKTIF = ['P.AH.01','P.AH.02','P.AH.03','P.AH.04','P.AH.05','P.AH.06','P.AH.07','P.AH.08','P.AH.09'];
 const view_point = [-3.424, 128.9];
 const initial_zoom = 8;
 const Your_location = [-3.69375, 128.17733];
@@ -596,15 +596,18 @@ const PerairanPage = ({ theme, isActive }) => {
                 zoomControl: false,        // Remove zoom buttons
                 dragging: false,           // Disable panning
                 touchZoom: false,          // Disable touch zoom
-                scrollWheelZoom: false,    // Disable scroll wheel zoom
+                scrollWheelZoom: true,    // Disable scroll wheel zoom
                 doubleClickZoom: false,    // Disable double-click zoom
                 boxZoom: false,            // Disable box zoom
                 keyboard: false,           // Disable keyboard navigation
-                tap: false                 // Disable tap (mobile)
+                tap: false,                // Disable tap (mobile)
+                zoomSnap: 0.1,             // Allow fractional zoom levels (0.1 increments)
+                zoomDelta: 0.1             // Zoom in/out by 0.1 increments
             }).setView(view_point, initial_zoom);
             
-            L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+            L.tileLayer('https://tiles.stadiamaps.com/tiles/alidade_smooth_dark/{z}/{x}/{y}{r}.{ext}', {
+                attribution: '&copy; <a href="https://www.stadiamaps.com/" target="_blank">Stadia Maps</a> &copy; <a href="https://openmaptiles.org/" target="_blank">OpenMapTiles</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+                ext: 'png'
             }).addTo(mapRef.current);
             L.marker(Your_location, { icon: redIcon }).addTo(mapRef.current)
                 
@@ -919,7 +922,7 @@ const PerairanPage = ({ theme, isActive }) => {
 
     return (
         <>
-        <div className={`flex flex-col h-[calc(100vh-4rem)] ${theme.glassCardClass} rounded-3xl overflow-hidden`}>
+        <div className={`flex flex-col h-[calc(100vh-8rem)] ${theme.glassCardClass} rounded-3xl overflow-hidden`}>
             <header className={`p-4 z-10 border-b ${theme.border} shrink-0`}>
                 <h1 className={`text-xl font-bold text-center ${theme.text.primary}`}>{mapTitle}</h1>
             </header>

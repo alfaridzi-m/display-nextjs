@@ -1,13 +1,15 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Wind, Droplets, Compass, Activity, Thermometer, Waves } from 'lucide-react';
+import { Wind, Droplets, Compass, Activity, Thermometer, Waves, Navigation, Navigation2 } from 'lucide-react';
 import WeatherIcon from './weather-icon';
 import axios from 'axios';
 import TidesCard from './tides-chart';
 import HourlyForecastCard from './hourly-card';
 import DailyForecastItem from './dailyforecast';
 import InfoRow from './info-row';
+import windDirectionToDegrees from './wind-dir';
+import getWaveColor from './wave-color';
 
 const WeatherPage = ({ theme, list }) => {
     const [portData, setPortData] = useState([]);
@@ -90,15 +92,26 @@ const WeatherPage = ({ theme, list }) => {
         forecasts.forEach(forecast => {
             const date = forecast.time.split(' ')[0];
             if (!dailySummaries[date]) {
-                dailySummaries[date] = { temps: [], conditions: {} };
+                dailySummaries[date] = { temps: [], conditions: {}, waves: [], winds: [] };
             }
-            dailySummaries[date].temps.push(forecast.temp_avg);
+            // Normalize to numbers just in case values are strings
+            const temp = Number(forecast.temp_avg);
+            const wave = Number(forecast.wave_height);
+            const wind = Number(forecast.wind_speed);
+
+            if (!Number.isNaN(temp)) dailySummaries[date].temps.push(temp);
+            if (!Number.isNaN(wave)) dailySummaries[date].waves.push(wave);
+            if (!Number.isNaN(wind)) dailySummaries[date].winds.push(wind);
             dailySummaries[date].conditions[forecast.weather] = (dailySummaries[date].conditions[forecast.weather] || 0) + 1;
         });
         return Object.keys(dailySummaries).map(date => {
             const summary = dailySummaries[date];
             const minTemp = Math.min(...summary.temps);
             const maxTemp = Math.max(...summary.temps);
+            const minWave = summary.waves.length ? Math.min(...summary.waves) : null;
+            const maxWave = summary.waves.length ? Math.max(...summary.waves) : null;
+            const minWind = summary.winds.length ? Math.min(...summary.winds) : null;
+            const maxWind = summary.winds.length ? Math.max(...summary.winds) : null;
             const dominantCondition = Object.keys(summary.conditions).reduce((a, b) => 
                 (weatherSeverity[a] || weatherSeverity.default) > (weatherSeverity[b] || weatherSeverity.default) ? a : b
             );
@@ -106,25 +119,55 @@ const WeatherPage = ({ theme, list }) => {
                 day: new Date(date).toLocaleString('id-ID', { weekday: 'long' }),
                 icon: dominantCondition,
                 condition: dominantCondition,
-                temp: `${minTemp}°/${maxTemp}°`
+                tempMax: `${maxTemp}°C`,
+                tempMin: `${minTemp}°C`,
+                wave: minWave !== null && maxWave !== null ? `${minWave} - ${maxWave} m` : '-',
+                wind: minWind !== null && maxWind !== null ? `${minWind} - ${maxWind} kt` : '-',
             };
         });
     };
 
     const dailyData = processDailyForecast(data['forecast_day2-4']);
 
+    // Get wind direction rotation
+    const windRotation = windDirectionToDegrees(displayForecast.wind_from);
+    
+    // Get wave color based on category
+    const waveColor = getWaveColor(displayForecast.wave_cat);
+
     return (
         <div key={activePortIndex} className="flex flex-col gap-6 card-container animate-page-fade-in">
-            <div className={`${theme.glassCardClass} w-full p-4 text-3xl font-bold text-center`}><span className='font-medium text-gray-700'>Prakiraan Cuaca</span> {data.name}</div>
+            <div className={`${theme.glassCardClass} w-full p-4 text-3xl font-bold text-center text-sky-800`}><span className='font-medium text-gray-700'>Prakiraan Cuaca</span> {data.name}</div>
             <div className="flex flex-col lg:flex-row gap-6">
                 <div className={`${theme.glassCardClass} p-6 flex flex-col justify-between card-item w-1/2 animate-card`} style={{ '--delay': '0.2s' }}>
-                <p className={`text-2xl font-bold ${theme.text.primary}`}>Prakiraan Pukul {new Date(displayForecast.time).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', hour12: false }).replace('.', ':')}</p>
+                <p className={`text-2xl font-bold ${theme.nav.text}`}>Prakiraan Pukul {new Date(displayForecast.time).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', hour12: false }).replace('.', ':')}</p>
                     <div className='flex justify-around items-center'>
                         <div className="flex flex-col space-y-6 border-r border-gray-300 pr-6">
                             <div className="grid grid-cols-3 gap-4">
-                                <InfoRow icon={Thermometer} label="Suhu" value={`${displayForecast.temp_avg}°C`} sub="Udara" big theme={theme}/>
-                                <InfoRow icon={Wind} label="Angin" value={`${displayForecast.wind_speed} - ${displayForecast.wind_gust} kt`} sub={displayForecast.wind_from} big theme={theme}/>
-                                <InfoRow icon={Waves} label="Gelombang" value={`${displayForecast.wave_height} m`} sub={displayForecast.wave_cat} big theme={theme}/>
+                                <InfoRow icon={Thermometer} label="Suhu" sub={"Udara"} value={`${displayForecast.temp_avg}°C`} big theme={theme}/>
+                                <InfoRow 
+                                    icon={Wind} 
+                                    label="Angin" 
+                                    value={`${displayForecast.wind_speed} - ${displayForecast.wind_gust} kt`} 
+                                    sub={displayForecast.wind_from} 
+                                    big 
+                                    theme={theme}
+                                    customIcon={
+                                        <Navigation2 
+                                            className={`mb-2 w-12 h-12 ${theme.text.secondary}`} 
+                                            style={{ transform: `rotate(${(windRotation)+180}deg)` }}
+                                        />
+                                    }
+                                />
+                                <InfoRow 
+                                    icon={Waves} 
+                                    label="Gelombang" 
+                                    value={`${displayForecast.wave_height} m`} 
+                                    sub={displayForecast.wave_cat} 
+                                    big 
+                                    theme={theme}
+                                    waveColor={waveColor}
+                                />
                             </div>
                             <div className="grid grid-cols-3 gap-4 border-t border-gray-300 pt-4">
                                 <InfoRow icon={Droplets} label="Kelembapan" value={`${displayForecast.rh_avg}%`} sub="Rata-rata" theme={theme}/>
@@ -142,14 +185,14 @@ const WeatherPage = ({ theme, list }) => {
                 <TidesCard code={data.code} theme={theme} height={300} />
             </div>
                 <div className={`${theme.glassCardClass} p-6 card-item lg:w-1/3 flex flex-col animate-card`}style={{ '--delay': '0.6s' }}>
-                    <h3 className={`mb-2 text-2xl font-bold ${theme.text.primary}`}>Prakiraan 3 Hari Kedepan</h3>
-                    <div className="space-y-1 flex-grow flex flex-col justify-around">
+                    <h3 className={`mb-2 text-2xl font-bold ${theme.nav.text}`}>Prakiraan 3 Hari Kedepan</h3>
+                    <div className="space-y-1 flex-grow flex flex-col justify-around w-full">
                         {dailyData.slice(0, 5).map((item, index) => (<DailyForecastItem key={index} {...item} theme={theme}/>))}
                     </div>
                 </div>
             </div>
             <div className={`${theme.glassCardClass} pt-6 pb-4 card-item animate-card`} style={{ '--delay': '0.8s' }}>
-                <h3 className={`font-semibold text-3xl px-6 mb-4 ${theme.text.primary}`}>Prakiraan Cuaca Hari Ini</h3>
+                <h3 className={` text-2xl px-6 mb-4 font-bold ${theme.nav.text}`}>Prakiraan Cuaca Hari Ini</h3>
                 <div className="slider-container">
                     <div className="slider-track">
                         {hourlyData.length > 0 ? [...hourlyData, ...hourlyData].map((item, index) => (<HourlyForecastCard key={index} {...item} theme={theme}/>)) : <p className={`px-6 ${theme.text.secondary}`}>Tidak ada prakiraan lebih lanjut untuk hari ini.</p>}

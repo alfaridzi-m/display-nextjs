@@ -1,6 +1,6 @@
 'use client';
 import WeatherIcon from './weather-icon';
-import { Thermometer, Navigation, Waves } from 'lucide-react';
+import { Thermometer, Navigation2, Waves } from 'lucide-react';
 
 const getWaveColor = (category) => {
     const colors = {
@@ -32,7 +32,7 @@ const PortCard = ({dayLabel , tempRange, conditionText, windSpeed, windGust, win
                         <span className={`${theme.text.primary} text-sm font-bold`}>{tempRange}</span>
                     </div>
                     <div className="flex flex-col items-center justify-center">
-                        <Navigation className={`w-6 h-6 mb-1 ${theme.text.secondary}`} style={{ transform: `rotate(${windDirection}deg)` }} />
+                        <Navigation2 className={`w-6 h-6 mb-1 ${theme.text.secondary}`} style={{ transform: `rotate(${(windDirection)+180}deg)` }} />
                         <span className={`${theme.text.primary} text-sm font-bold`}>{windSpeed} knot</span>
                         <span className={`${theme.text.secondary} text-xs font-bold`}>Gust {windGust} knot</span>
                     </div>

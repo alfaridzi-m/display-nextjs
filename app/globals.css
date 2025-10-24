@@ -14,6 +14,22 @@
     /* Latar belakang default untuk peta, bisa di-override jika perlu */
     background: #aadaff;
   }
+  
+  /* Wilayah tooltip styling */
+  .wilayah-tooltip {
+    background: rgba(17, 24, 39, 0.95) !important;
+    color: #e5e7eb !important;
+    border: 1px solid rgba(59, 130, 246, 0.5) !important;
+    border-radius: 6px !important;
+    padding: 6px 10px !important;
+    font-size: 12px !important;
+    font-weight: 600 !important;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.4) !important;
+  }
+  
+  .wilayah-tooltip::before {
+    border-top-color: rgba(17, 24, 39, 0.95) !important;
+  }
 }
 @keyframes wave-fill {
   from { transform: translateY(105%); }
