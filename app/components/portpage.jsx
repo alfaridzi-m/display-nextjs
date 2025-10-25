@@ -5,7 +5,7 @@ import axios from 'axios';
 import windDirectionToDegrees from './wind-dir';
 import PortCard from './port-card';
 
-const PortPage = ({ theme }) => {
+const PortPage = ({ theme, portEndPoints }) => {
     const [portData, setPortData] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
     const [currentPage, setCurrentPage] = useState(0);
@@ -21,7 +21,6 @@ const PortPage = ({ theme }) => {
 
     // --- DATA FETCHING ---
     useEffect(() => {
-        const portEndPoints = ['AA001','AA004', 'AA005', 'AA006', 'AA007','AA008', 'AA009','AA010','AA011'];
         const urls = portEndPoints.map(id => `https://maritim.bmkg.go.id/marine-data/pelabuhan/${id}.json`);
 
         const fetchAllData = async () => {
@@ -40,7 +39,7 @@ const PortPage = ({ theme }) => {
             }
         }
         fetchAllData();
-    }, []);
+    }, [portEndPoints]);
 
     // --- SLIDESHOW LOGIC ---
     useEffect(() => {

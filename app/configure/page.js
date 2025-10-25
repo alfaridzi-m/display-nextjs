@@ -27,10 +27,11 @@ export default function ConfigurePage() {
   const [showPreview, setShowPreview] = useState(false);
   const [previewPage, setPreviewPage] = useState('weather');
   const [isDarkMode, setIsDarkMode] = useState(false);
+  const [idValidation, setIdValidation] = useState({ isValid: true, message: '', isChecking: false });
   
   const [formData, setFormData] = useState({
     id: "",
-    nama_display: "",
+    displayTitle: "",
     // map settings inputs
     viewPointLat: "",
     viewPointLng: "",
@@ -74,9 +75,66 @@ export default function ConfigurePage() {
       .catch(err => console.error('Failed to load port data:', err));
   }, []);
 
+  // Debounced ID validation check
+  useEffect(() => {
+    const checkIdAvailability = async () => {
+      if (!formData.id) {
+        setIdValidation({ isValid: true, message: '', isChecking: false });
+        return;
+      }
+
+      // Check format first
+      if (!/^[a-zA-Z0-9]+$/.test(formData.id)) {
+        setIdValidation({ 
+          isValid: false, 
+          message: 'ID hanya boleh berisi huruf dan angka', 
+          isChecking: false 
+        });
+        return;
+      }
+
+      setIdValidation({ isValid: true, message: '', isChecking: true });
+
+      try {
+        const response = await fetch(`/api/configure?id=${formData.id}`);
+        const result = await response.json();
+        
+        if (result.success) {
+          // ID exists - block it
+          setIdValidation({ 
+            isValid: false, 
+            message: 'ID sudah digunakan. Silakan pilih ID lain.', 
+            isChecking: false,
+            isWarning: false 
+          });
+        } else {
+          // ID available
+          setIdValidation({ 
+            isValid: true, 
+            message: 'ID tersedia', 
+            isChecking: false 
+          });
+        }
+      } catch (error) {
+        console.error('Error checking ID:', error);
+        setIdValidation({ isValid: true, message: '', isChecking: false });
+      }
+    };
+
+    const timeoutId = setTimeout(checkIdAvailability, 500);
+    return () => clearTimeout(timeoutId);
+  }, [formData.id]);
+
   const handleInputChange = useCallback((e) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
+    
+    // Validate ID field: only alphanumeric characters (no spaces or special characters)
+    if (name === 'id') {
+      const sanitizedValue = value.replace(/[^a-zA-Z0-9]/g, '');
+      setFormData((prev) => ({ ...prev, [name]: sanitizedValue }));
+    } else {
+      setFormData((prev) => ({ ...prev, [name]: value }));
+    }
   }, []);
 
   const handleCoordinateChange = useCallback((latlng) => {
@@ -154,7 +212,7 @@ export default function ConfigurePage() {
       : null;
     return {
       id: formData.id || undefined,
-      nama_display: formData.nama_display || undefined,
+      displayTitle: formData.displayTitle || undefined,
       ports: {
         portIds: formData.portIds || [],
         portEndPoints: formData.portEndPoints || [],
@@ -190,14 +248,26 @@ export default function ConfigurePage() {
       return;
     }
 
+    // Block saving if ID validation failed
+    if (!idValidation.isValid) {
+      alert("ID Konfigurasi tidak valid. " + idValidation.message);
+      return;
+    }
+
     try {
-      // Check if configuration exists
+      // Double check to ensure ID doesn't exist (safety check)
       const checkResponse = await fetch(`/api/configure?id=${configObject.id}`);
       const checkData = await checkResponse.json();
       
-      const method = checkData.success ? 'PUT' : 'POST';
+      if (checkData.success) {
+        // ID exists - block saving
+        alert(`ID "${configObject.id}" sudah digunakan. Silakan pilih ID lain.`);
+        return;
+      }
+      
+      // ID is available, proceed with POST
       const response = await fetch('/api/configure', {
-        method: method,
+        method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
@@ -207,7 +277,7 @@ export default function ConfigurePage() {
       const result = await response.json();
       
       if (result.success) {
-        alert(`Konfigurasi berhasil ${method === 'POST' ? 'disimpan' : 'diperbarui'}!`);
+        alert('Konfigurasi berhasil disimpan!');
       } else {
         alert(`Gagal menyimpan: ${result.error}`);
       }
@@ -230,7 +300,7 @@ export default function ConfigurePage() {
         const config = result.data;
         setFormData({
           id: config.id || "",
-          nama_display: config.nama_display || "",
+          displayTitle: config.displayTitle || "",
           viewPointLat: config.map_settings?.view_point?.[0]?.toString() || "",
           viewPointLng: config.map_settings?.view_point?.[1]?.toString() || "",
           initialZoom: config.map_settings?.initial_zoom || 8,
@@ -275,7 +345,7 @@ export default function ConfigurePage() {
   const handleSelectConfig = (config) => {
     setFormData({
       id: config.id || "",
-      nama_display: config.nama_display || "",
+      displayTitle: config.displayTitle || "",
       viewPointLat: config.map_settings?.view_point?.[0]?.toString() || "",
       viewPointLng: config.map_settings?.view_point?.[1]?.toString() || "",
       initialZoom: config.map_settings?.initial_zoom || 8,
@@ -287,7 +357,7 @@ export default function ConfigurePage() {
       wilayahAktif: config.wilayah_aktif || [],
     });
     setShowConfigList(false);
-    alert(`Konfigurasi "${config.nama_display || config.id}" berhasil dimuat!`);
+    alert(`Konfigurasi "${config.displayTitle || config.id}" berhasil dimuat!`);
   };
 
   const handleDownload = () => {
@@ -323,18 +393,25 @@ export default function ConfigurePage() {
           </button>
 
           <Sidebar activePage={previewPage} handleNavClick={setPreviewPage} isDarkMode={isDarkMode} setIsDarkMode={setIsDarkMode} pageDurations={pageDurations} />
-          <TopBar isDarkMode={isDarkMode} setIsDarkMode={setIsDarkMode} />
+          <TopBar isDarkMode={isDarkMode} setIsDarkMode={setIsDarkMode} title={configObject.displayTitle || 'Display Preview'} />
 
           <main className="flex-1 p-4 sm:p-6 lg:p-8 pb-28 md:pb-8 pt-20 md:pt-15 lg:pt-18 overflow-y-auto z-10">
             <div>
               <div style={{ display: previewPage === 'weather' ? 'block' : 'none' }}>
-                <WeatherPage theme={theme} list={formData.portIds?.length > 0 ? formData.portIds : ['AA005']} />
+                <WeatherPage theme={theme} list={configObject.ports.portIds} />
               </div>
               <div style={{ display: previewPage === 'cities' ? 'block' : 'none' }}>
-                <PortPage theme={theme} />
+                <PortPage theme={theme} portEndPoints={configObject.ports.portEndPoints}/>
               </div>
               <div style={{ display: previewPage === 'Perairan' ? 'block' : 'none' }}>
-                <PerairanPage theme={theme} isActive={previewPage === 'Perairan'} />
+                <PerairanPage 
+                  theme={theme} 
+                  isActive={previewPage === 'Perairan'}
+                  wilayahAktif={configObject.wilayah_aktif}
+                  viewPoint={configObject.map_settings.view_point}
+                  initialZoom={configObject.map_settings.initial_zoom}
+                  yourLocation={configObject.map_settings.your_location}
+                />
               </div>
               <div style={{ display: previewPage === 'Peta' ? 'block' : 'none' }}>
                 <PetaPage theme={theme} />
@@ -394,7 +471,7 @@ export default function ConfigurePage() {
                             {config.updatedAt ? new Date(config.updatedAt).toLocaleDateString('id-ID') : ''}
                           </span>
                         </div>
-                        <p className="text-sm text-gray-300 mb-3">{config.nama_display || 'Tanpa nama'}</p>
+                        <p className="text-sm text-gray-300 mb-3">{config.displayTitle || 'Tanpa nama'}</p>
                         <div className="flex flex-wrap gap-2 text-xs text-gray-400">
                           <span className="bg-gray-600 px-2 py-1 rounded">
                             {config.ports?.portIds?.length || 0} pelabuhan utama
@@ -418,23 +495,63 @@ export default function ConfigurePage() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label htmlFor="id" className="block text-sm font-medium text-gray-300 mb-2">ID Konfigurasi</label>
-              <input
-                type="text"
-                name="id"
-                id="id"
-                value={formData.id}
-                onChange={handleInputChange}
-                className="w-full bg-gray-700 border border-gray-600 rounded-lg p-3 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-300"
-                placeholder="Contoh: mks1992"
-              />
+              <div className="relative">
+                <input
+                  type="text"
+                  name="id"
+                  id="id"
+                  value={formData.id}
+                  onChange={handleInputChange}
+                  className={`w-full bg-gray-700 border rounded-lg p-3 pr-10 focus:ring-2 focus:outline-none transition-all duration-300 ${
+                    !formData.id 
+                      ? 'border-gray-600 focus:ring-blue-500 focus:border-blue-500' 
+                      : idValidation.isChecking
+                      ? 'border-yellow-500 focus:ring-yellow-500 focus:border-yellow-500'
+                      : idValidation.isValid
+                      ? 'border-green-500 focus:ring-green-500 focus:border-green-500'
+                      : 'border-red-500 focus:ring-red-500 focus:border-red-500'
+                  }`}
+                  placeholder="Contoh: mks1992"
+                  pattern="[a-zA-Z0-9]+"
+                  title="Hanya huruf dan angka (tanpa spasi atau karakter khusus)"
+                />
+                {formData.id && (
+                  <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                    {idValidation.isChecking ? (
+                      <svg className="animate-spin h-5 w-5 text-yellow-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                    ) : idValidation.isValid ? (
+                      <svg className="h-5 w-5 text-green-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                      </svg>
+                    ) : (
+                      <svg className="h-5 w-5 text-red-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                      </svg>
+                    )}
+                  </div>
+                )}
+              </div>
+              {formData.id && idValidation.message && (
+                <p className={`text-xs mt-1 ${
+                  idValidation.isValid ? 'text-green-400' : 'text-red-400'
+                }`}>
+                  {idValidation.message}
+                </p>
+              )}
+              {!formData.id && (
+                <p className="text-xs text-gray-400 mt-1">Hanya huruf dan angka, tanpa spasi atau karakter khusus</p>
+              )}
             </div>
             <div>
-              <label htmlFor="nama_display" className="block text-sm font-medium text-gray-300 mb-2">Nama Display</label>
+              <label htmlFor="displayTitle" className="block text-sm font-medium text-gray-300 mb-2">Nama Display</label>
               <input
                 type="text"
-                name="nama_display"
-                id="nama_display"
-                value={formData.nama_display}
+                name="displayTitle"
+                id="displayTitle"
+                value={formData.displayTitle}
                 onChange={handleInputChange}
                 className="w-full bg-gray-700 border border-gray-600 rounded-lg p-3 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-300"
                 placeholder="Contoh: Display Cuaca Pelabuhan Makassar"

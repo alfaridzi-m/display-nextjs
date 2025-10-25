@@ -6,13 +6,6 @@ import utc from 'dayjs/plugin/utc';
 
 dayjs.extend(utc);
 
-// DIUBAH: Konstanta diperbarui sesuai permintaan Anda
-const WILAYAH_AKTIF = ['P.AH.01','P.AH.02','P.AH.03','P.AH.04','P.AH.05','P.AH.06','P.AH.07','P.AH.08','P.AH.09'];
-const view_point = [-3.424, 128.9];
-const initial_zoom = 8;
-const Your_location = [-3.69375, 128.17733];
-
-
 const KATEGORI_GELOMBANG = {
   Tenang: { color: "#2793f2", range: "0 - 0.5 m" },
   Rendah: { color: "#00d342", range: "0.5 - 1.25 m" },
@@ -29,7 +22,7 @@ const getColorForWaveCategory = (category) => {
 };
 
 // PINDAH: Ekstrak logika fetching dan parsing data ke fungsi terpisah di luar komponen
-async function fetchAndProcessForecasts(url = 'https://maritim.bmkg.go.id/marine-data/combine/forecast.json') {
+async function fetchAndProcessForecasts(wilayahAktif, url = 'https://maritim.bmkg.go.id/marine-data/combine/forecast.json') {
     const weather_dict = { 1: 'Cerah', 2: 'Cerah Berawan', 3: 'Berawan', 4: 'Berawan Tebal', 5: 'Hujan Ringan', 6: 'Hujan Sedang', 7: 'Hujan Lebat', 8: 'Hujan Sangat Lebat', 9: 'Hujan Ekstrem', 10: 'Hujan Petir', 11: 'Kabut/Asap', 12: 'Udara Kabur', 13: 'Kabut', 14: 'Petir', '': 'unknown' };
     const wave_cat_dict = { 1: "Tenang", 2: "Rendah", 3: "Sedang", 4: "Tinggi", 5: "Sangat Tinggi", 6: "Ekstrem", 7: "Sangat Ekstrem", '': 'unknown' };
     const dir_dict = { 1: "Utara", 2: "Utara Timur Laut", 3: "Timur Laut", 4: "Timur Timur Laut", 5: "Timur", 6: "Timur Tenggara", 7: "Tenggara", 8: "Selatan Tenggara", 9: "Selatan", 10: "Selatan Barat Daya", 11: "Barat Daya", 12: "Barat Barat Daya", 13: "Barat", 14: "Barat Barat Laut", 15: "Barat Laut", 16: "Utara Barat Laut", '': 'unknown' };
@@ -59,7 +52,7 @@ async function fetchAndProcessForecasts(url = 'https://maritim.bmkg.go.id/marine
         const now = new Date();
 
         for (const area of data.area) {
-            if (!WILAYAH_AKTIF.includes(area.id)) continue;
+            if (!wilayahAktif.includes(area.id)) continue;
             const allForecasts = parseFctCode(area.id, area.fct_code);
             const futureForecasts = allForecasts.filter(f => f.time > now);
 
@@ -123,7 +116,7 @@ function getNearestTimeForBucket(bucketISO, allTimes) {
 }
 
 
-const PerairanPage = ({ theme, isActive }) => {
+const PerairanPage = ({ theme, isActive, wilayahAktif, viewPoint, initialZoom, yourLocation }) => {
     const [mapTitle] = useState('Peta Prakiraan Kategori GGGGG');
     const [forecastData, setForecastData] = useState(null);
     const [timeSteps, setTimeSteps] = useState([]);
@@ -603,19 +596,19 @@ const PerairanPage = ({ theme, isActive }) => {
                 tap: false,                // Disable tap (mobile)
                 zoomSnap: 0.1,             // Allow fractional zoom levels (0.1 increments)
                 zoomDelta: 0.1             // Zoom in/out by 0.1 increments
-            }).setView(view_point, initial_zoom);
+            }).setView(viewPoint, initialZoom);
             
             L.tileLayer('https://tiles.stadiamaps.com/tiles/alidade_smooth_dark/{z}/{x}/{y}{r}.{ext}', {
                 attribution: '&copy; <a href="https://www.stadiamaps.com/" target="_blank">Stadia Maps</a> &copy; <a href="https://openmaptiles.org/" target="_blank">OpenMapTiles</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
                 ext: 'png'
             }).addTo(mapRef.current);
-            L.marker(Your_location, { icon: redIcon }).addTo(mapRef.current)
+            L.marker(yourLocation, { icon: redIcon }).addTo(mapRef.current)
                 
 
             try {
                 const geojsonData = await fetch("/wilpro.geojson").then(res => res.json());
                 setGeojson(geojsonData); // DIUBAH: Simpan geojson ke state
-                const { forecastData, timeSteps } = await fetchAndProcessForecasts();
+                const { forecastData, timeSteps } = await fetchAndProcessForecasts(wilayahAktif);
                 
                 setForecastData(forecastData);
                 setTimeSteps(timeSteps);
@@ -630,14 +623,14 @@ const PerairanPage = ({ theme, isActive }) => {
                 const geoJsonLayer = L.geoJSON(geojsonData, {
                     style: feature => ({
                         color: "#ffffffff",
-                        weight: WILAYAH_AKTIF.includes(feature.properties.ID_MAR) ? 1.5 : 0.5,
+                        weight: wilayahAktif.includes(feature.properties.ID_MAR) ? 1.5 : 0.5,
                         opacity: 0.8,
                         fillColor: KATEGORI_GELOMBANG.unknown.color,
                         fillOpacity: 0.75,
                     }),
                     onEachFeature: (feature, layer) => {
                         const regionId = feature.properties.ID_MAR;
-                        if (WILAYAH_AKTIF.includes(regionId)) {
+                        if (wilayahAktif.includes(regionId)) {
                             featureLayersRef.current[regionId] = layer;
                             
                             // Add popup with region info on click
@@ -648,7 +641,7 @@ const PerairanPage = ({ theme, isActive }) => {
                 }).addTo(mapRef.current);
 
                 // Initialize meteorological labels for active regions
-                WILAYAH_AKTIF.forEach(regionId => {
+                wilayahAktif.forEach(regionId => {
                     const feature = geojsonData.features.find(f => f.properties.ID_MAR === regionId);
                     if (feature && featureLayersRef.current[regionId]) {
                         const layer = featureLayersRef.current[regionId];
@@ -746,7 +739,7 @@ const PerairanPage = ({ theme, isActive }) => {
         if (!L) return;
 
         // Re-create all labels with new position settings
-        WILAYAH_AKTIF.forEach(regionId => {
+        wilayahAktif.forEach(regionId => {
             if (labelLayersRef.current[regionId]) {
                 // Remove old label and connector line
                 mapRef.current.removeLayer(labelLayersRef.current[regionId]);

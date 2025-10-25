@@ -14,6 +14,13 @@ import TopBar from '../components/top-bar';
 const Display = () => {
   const pages = ['weather', 'cities', 'Perairan', 'Peta'];
   const portIds = ['AA005', 'AA003', 'AA006','AA007','AA001'];
+  const portEndPoints = ['AA001','AA004', 'AA005', 'AA006', 'AA007','AA008', 'AA009','AA010','AA011'];
+  const WILAYAH_AKTIF = ['P.AH.01','P.AH.02','P.AH.03','P.AH.04','P.AH.05','P.AH.06','P.AH.07','P.AH.08','P.AH.09'];
+  const view_point = [-3.424, 128.9];
+  const initial_zoom = 8;
+  const Your_location = [-3.69375, 128.17733];
+  const displayTitle = 'Display Cuaca Pelabuhan Soekarno Hatta';
+  
   const pageDurations = {
     weather: 1500000 * portIds.length,
     cities: 300000,
@@ -101,7 +108,7 @@ const Display = () => {
         <div className={`absolute bottom-[-10%] right-[-10%] w-96 h-96 rounded-full filter blur-3xl opacity-70 animate-blob animation-delay-4000 ${theme.overlay2}`}></div>
 
         <Sidebar activePage={activePage} handleNavClick={handleNavClick} isDarkMode={isDarkMode} setIsDarkMode={setIsDarkMode} pageDurations={pageDurations} />
-        <TopBar isDarkMode={isDarkMode} setIsDarkMode={setIsDarkMode} />
+        <TopBar isDarkMode={isDarkMode} setIsDarkMode={setIsDarkMode} title={displayTitle} />
 
 
         <main className="flex-1 p-4 sm:p-6 lg:p-8 pb-28 md:pb-8 pt-20 md:pt-15 lg:pt-18 overflow-y-auto z-10">
@@ -111,10 +118,17 @@ const Display = () => {
             <WeatherPage theme={theme} list={portIds} />
         </div>
         <div style={{ display: activePage === 'cities' ? 'block' : 'none' }}>
-            <PortPage theme={theme} />
+            <PortPage theme={theme} portEndPoints={portEndPoints} />
         </div>
         <div style={{ display: activePage === 'Perairan' ? 'block' : 'none' }}>
-            <PerairanPage theme={theme} isActive={activePage === 'Perairan'} />
+            <PerairanPage 
+              theme={theme} 
+              isActive={activePage === 'Perairan'} 
+              wilayahAktif={WILAYAH_AKTIF}
+              viewPoint={view_point}
+              initialZoom={initial_zoom}
+              yourLocation={Your_location}
+            />
         </div>
         <div style={{ display: activePage === 'Peta' ? 'block' : 'none' }}>
             <PetaPage theme={theme} />
