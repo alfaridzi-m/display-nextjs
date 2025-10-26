@@ -17,9 +17,18 @@ const WeatherPage = ({ theme, list }) => {
     const [loading, setLoading] = useState(true);
 
     const weatherSeverity = {
-        'Cerah': 0, 'Cerah Berawan': 1, 'Berawan': 2, 'Berawan Tebal': 3,
-        'Kabut': 4, 'Hujan Ringan': 5, 'Hujan Sedang': 6, 'Hujan Lebat': 7,
-        'Hujan Petir': 8, 'default': 99
+        'Cerah': 0, 
+        'Cerah Berawan': 1, 
+        'Berawan': 2, 
+        'Berawan Tebal': 3,
+        'Udara Kabur': 3, 
+        'Petir': 5,
+        'Kabut': 6, 
+        'Hujan Ringan': 7, 
+        'Hujan Sedang': 8, 
+        'Hujan Lebat': 9,
+        'Hujan Petir': 10, 
+        'default': 99
     };
 
     useEffect(() => {

@@ -14,7 +14,7 @@ import TopBar from '../components/top-bar';
 const Display = () => {
   const pages = ['weather', 'cities', 'Perairan', 'Peta'];
   const portIds = ['AA005', 'AA003', 'AA006','AA007','AA001'];
-  const portEndPoints = ['AA001','AA004', 'AA005', 'AA006', 'AA007','AA008', 'AA009','AA010','AA011'];
+  const portEndPoints = ['AA002','AA004', 'AA005', 'AA006', 'AA007','AA008', 'AA009','AA010','AA011'];
   const WILAYAH_AKTIF = ['P.AH.01','P.AH.02','P.AH.03','P.AH.04','P.AH.05','P.AH.06','P.AH.07','P.AH.08','P.AH.09'];
   const view_point = [-3.424, 128.9];
   const initial_zoom = 8;

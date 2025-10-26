@@ -127,9 +127,9 @@
 /* Pastikan CSS Leaflet diimpor di layout.js, bukan di sini (lihat penjelasan di bawah) */
 
 /* Ganti filter peta dark mode agar lebih nyaman dilihat */
-.dark .leaflet-tile-pane {
+/* .dark .leaflet-tile-pane {
   filter: invert(1) hue-rotate(180deg) brightness(95%) contrast(90%);
-}
+} */
 
 .leaflet-popup-content-wrapper,
 .leaflet-popup-tip {

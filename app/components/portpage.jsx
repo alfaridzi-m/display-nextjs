@@ -14,9 +14,18 @@ const PortPage = ({ theme, portEndPoints }) => {
     const dayLabels = ['Hari Ini', 'Besok', 'Lusa'];
 
     const weatherSeverity = {
-        'Cerah': 0, 'Cerah Berawan': 1, 'Berawan': 2, 'Berawan Tebal': 3,
-        'Udara Kabur' : 4, 'Petir' : 5, 'Kabut': 6, 'Hujan Ringan': 7, 'Hujan Sedang': 8, 'Hujan Lebat': 9,
-        'Hujan Petir': 10, 'default': 99
+        'Cerah': 0, 
+        'Cerah Berawan': 1, 
+        'Berawan': 2, 
+        'Berawan Tebal': 3,
+        'Udara Kabur': 3, 
+        'Petir': 5,
+        'Kabut': 6, 
+        'Hujan Ringan': 7, 
+        'Hujan Sedang': 8, 
+        'Hujan Lebat': 9,
+        'Hujan Petir': 10, 
+        'default': 99
     };
 
     // --- DATA FETCHING ---

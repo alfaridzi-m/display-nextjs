@@ -892,6 +892,9 @@ const PerairanPage = ({ theme, isActive, wilayahAktif, viewPoint, initialZoom, y
         if (isDraggingMode && isPlaying) {
             setIsPlaying(false);
         }
+        else if (!isDraggingMode && !isPlaying) {
+            setIsPlaying(true);
+        }
     }, [isDraggingMode]);
 
     useEffect(() => {

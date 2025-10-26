@@ -3,13 +3,13 @@ import './globals.css'; // Impor CSS global di sini
 import "leaflet/dist/leaflet.css";
 
 export const metadata = {
-    title: 'Aplikasi Cuaca Maritim',
-    description: 'Prakiraan cuaca maritim oleh BMKG',
+    title: 'Display Cuaca Maritim',
+    description: 'Informasi Cuaca pelabuhan dan perairan',
 };
 
 export default function RootLayout({ children }) {
     return (
-        <html lang="en">
+        <html lang="id">
             <body>
               {children}
             </body>
