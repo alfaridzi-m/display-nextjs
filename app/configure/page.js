@@ -275,8 +275,15 @@ export default function ConfigurePage() {
       });
 
       const result = await response.json();
-      
+    
       if (result.success) {
+        // Save the ID to localStorage
+        try {
+          localStorage.setItem('id', configObject.id);
+          console.log('Config ID saved to localStorage:', configObject.id);
+        } catch (storageError) {
+          console.warn('Failed to save config ID to localStorage:', storageError);
+        }
         alert('Konfigurasi berhasil disimpan!');
       } else {
         alert(`Gagal menyimpan: ${result.error}`);
@@ -801,8 +808,6 @@ export default function ConfigurePage() {
               </div>
             )}
           </div>
-
-          {/* Submit Button - Removed */}
         </form>
 
         {/* Action Buttons */}

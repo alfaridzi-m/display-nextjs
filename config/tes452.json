@@ -1,0 +1,45 @@
+{
+  "id": "tes452",
+  "displayTitle": "displayk kuuu",
+  "ports": {
+    "portIds": [
+      "AH012",
+      "AH011",
+      "AG021"
+    ],
+    "portEndPoints": [
+      "AH014",
+      "AH001",
+      "AH003",
+      "AH005",
+      "AH006",
+      "AH013",
+      "AH015",
+      "AH037"
+    ]
+  },
+  "wilayah_aktif": [
+    "M.29",
+    "M.30",
+    "P.AH.01",
+    "P.AH.02",
+    "P.AG.25",
+    "P.AG.26",
+    "P.AG.23",
+    "P.AH.03",
+    "P.AH.04"
+  ],
+  "map_settings": {
+    "view_point": [
+      -4.326961,
+      128.13156
+    ],
+    "initial_zoom": 6.4,
+    "your_location": [
+      -3.389497926244354,
+      127.25902244907729
+    ]
+  },
+  "createdAt": "2025-10-26T11:13:40.197Z",
+  "updatedAt": "2025-10-26T11:13:40.197Z"
+}

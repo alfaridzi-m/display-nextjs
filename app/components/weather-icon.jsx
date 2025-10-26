@@ -1,6 +1,6 @@
 'use client';
 import React, { useState, useEffect, useRef } from 'react';
-import { Sun, CloudFog, CloudSun, Cloud, Cloudy ,CloudDrizzle , CloudRain, CloudRainWind, CloudLightning, Wind, Droplets, Thermometer, Map, List, Navigation, Moon, FishSymbol, Waves, Anchor, HelpCircle, Zap, Haze } from 'lucide-react';
+import { Sun, CloudFog, CloudSun, Cloud, Cloudy ,CloudDrizzle , CloudRain, CloudRainWind, CloudLightning, HelpCircle, Zap, Haze } from 'lucide-react';
 const WeatherIcon = ({ condition, size }) => {
   const weatherIconMap = {
     'Cerah': <Sun className={`w-${size} h-${size} text-yellow-400`} />,

@@ -1,0 +1,47 @@
+{
+  "id": "mks1234555",
+  "displayTitle": "contoh display",
+  "ports": {
+    "portIds": [
+      "AE006",
+      "AE007",
+      "AF013"
+    ],
+    "portEndPoints": [
+      "AE004",
+      "AD001",
+      "AF010",
+      "AE005",
+      "AE011",
+      "AE001",
+      "AE010",
+      "AE008"
+    ]
+  },
+  "wilayah_aktif": [
+    "M.29",
+    "M.30",
+    "M.31",
+    "P.AH.11",
+    "P.AH.09",
+    "P.AH.08",
+    "P.AH.07",
+    "P.AH.02",
+    "P.AH.04",
+    "P.AH.06",
+    "P.AH.10"
+  ],
+  "map_settings": {
+    "view_point": [
+      -4.3044,
+      128.672019
+    ],
+    "initial_zoom": 6.800000000000001,
+    "your_location": [
+      -3.6973793849691012,
+      127.11181640625001
+    ]
+  },
+  "createdAt": "2025-10-26T11:27:22.888Z",
+  "updatedAt": "2025-10-26T11:27:22.888Z"
+}
