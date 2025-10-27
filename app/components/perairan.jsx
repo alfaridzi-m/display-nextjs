@@ -117,7 +117,7 @@ function getNearestTimeForBucket(bucketISO, allTimes) {
 
 
 const PerairanPage = ({ theme, isActive, wilayahAktif, viewPoint, initialZoom, yourLocation }) => {
-    const [mapTitle] = useState('Peta Prakiraan Kategori GGGGG');
+    const [mapTitle] = useState('Peta Prakiraan Cuaca Perairan');
     const [forecastData, setForecastData] = useState(null);
     const [timeSteps, setTimeSteps] = useState([]);
     const [sixHourlySummary, setSixHourlySummary] = useState(null);

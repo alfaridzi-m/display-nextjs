@@ -12,56 +12,80 @@ import PetaPage from '../components/petaPage';
 import TopBar from '../components/top-bar';
 
 const Display = () => {
-  // --- Data Konfigurasi Awal Dihapus ---
-  // Data ini sekarang akan diambil dari API
-
-  // State untuk menyimpan data konfigurasi yang diambil dari API
-  const [config, setConfig] = useState(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [fetchError, setFetchError] = useState(null);
-
-  // State yang sudah ada
-  const [activePage, setActivePage] = useState(null); // Diatur setelah config dimuat
+  const pages = ['weather', 'cities', 'Perairan', 'Peta'];
+  
+  const [portIds, setPortIds] = useState([]);
+  const [portEndPoints, setPortEndPoints] = useState([]);
+  const [WILAYAH_AKTIF, setWilayahAktif] = useState([]);
+  const [view_point, setViewPoint] = useState([0, 0]);
+  const [initial_zoom, setInitialZoom] = useState(1);
+  const [Your_location, setYourLocation] = useState([0, 0]);
+  const [displayTitle, setDisplayTitle] = useState('');
+  const [configLoaded, setConfigLoaded] = useState(false);
+  
+  const pageDurations = {
+    weather: 1500000 * portIds.length,
+    cities: 300000,
+    Perairan: 1500000,
+    Peta: 6000000,
+  }
+  const [activePage, setActivePage] = useState(pages[0]);
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [isScreenSizeValid, setIsScreenSizeValid] = useState(true);
   const [screenSize, setScreenSize] = useState({ width: 0, height: 0 });
   const theme = isDarkMode ? darkTheme : lightTheme;
 
-  // --- PEMANGGILAN API ---
+  // Load configuration from localStorage and fetch from API
   useEffect(() => {
-    const fetchConfig = async () => {
-      // Ganti 'soekarno-hatta' dengan ID konfigurasi yang Anda inginkan
-      const configId = 'soekarno-hatta'; 
-      
+    const loadConfiguration = async () => {
       try {
-        const response = await fetch(`/api/config/${configId}`);
-        if (!response.ok) {
-          throw new Error(`Gagal mengambil konfigurasi: ${response.statusText}`);
+        const configId = localStorage.getItem('id');
+        if (!configId) {
+          console.log('No configuration ID found');
+          setConfigLoaded(true);
+          return;
         }
-        const data = await response.json();
-        setConfig(data);
-        setActivePage(data.pages[0]); // Atur halaman aktif pertama setelah data dimuat
+
+        console.log('Loading configuration:', configId);
+        const response = await fetch(`/api/configure?id=${configId}`);
+        
+        if (!response.ok) {
+          console.error('Failed to fetch configuration:', response.statusText);
+          setConfigLoaded(true);
+          return;
+        }
+
+        const { data: config } = await response.json();
+        
+        // Apply configuration using optional chaining and destructuring
+        setDisplayTitle(config.displayTitle || config.nama_display || '');
+        setPortIds(config.ports?.portIds || []);
+        setPortEndPoints(config.ports?.portEndPoints || []);
+        setWilayahAktif(config.wilayah_aktif || []);
+        setViewPoint(config.map_settings?.view_point || [0, 0]);
+        setInitialZoom(config.map_settings?.initial_zoom || 1);
+        setYourLocation(config.map_settings?.your_location || [0, 0]);
+        
+        console.log('Configuration loaded:', config.id);
       } catch (error) {
-        console.error("Error fetching configuration:", error);
-        setFetchError(error.message);
+        console.error('Error loading configuration:', error);
       } finally {
-        setIsLoading(false);
+        setConfigLoaded(true);
       }
     };
 
-    fetchConfig();
-  }, []); // Dependensi kosong, dijalankan sekali saat komponen dimuat
+    loadConfiguration();
+  }, []);
 
-  // Screen size validation (tidak berubah)
+
+  // Screen size validation
   useEffect(() => {
     const checkScreenSize = () => {
       const width = window.innerWidth;
       const height = window.innerHeight;
       setScreenSize({ width, height });
-
-      // Catatan: Batasan tinggi di kode Anda tidak konsisten (950-1250 vs 1020-1150)
-      // Saya menggunakan batasan dari pesan error (1020-1150)
-      const isValid = width >= 1880 && width <= 1950 && height >= 1020 && height <= 1150;
+      
+      const isValid = width >= 1880 && width <= 1950 && height >= 950 && height <= 1250;
       setIsScreenSizeValid(isValid);
     };
 
@@ -70,47 +94,88 @@ const Display = () => {
     return () => window.removeEventListener('resize', checkScreenSize);
   }, []);
 
-  // --- Mendapatkan Variabel Konfigurasi dari State ---
-  // Gunakan optional chaining (?.) dan default values untuk menghindari error saat config masih null
-  const pages = config?.pages || [];
-  const portIds = config?.portIds || [];
-  const portEndPoints = config?.portEndPoints || [];
-  const WILAYAH_AKTIF = config?.WILAYAH_AKTIF || [];
-  const view_point = config?.view_point || [-3.424, 128.9];
-  const initial_zoom = config?.initial_zoom || 8;
-  const Your_location = config?.Your_location || [-3.69375, 128.17733];
-  const displayTitle = config?.displayTitle || 'Memuat...';
-
-  // Durasi halaman dihitung setelah config dimuat
-  const pageDurations = config ? {
-    weather: (config.pageDurations?.weather || 1500000) * portIds.length,
-    cities: config.pageDurations?.cities || 300000,
-    Perairan: config.pageDurations?.Perairan || 1500000,
-    Peta: config.pageDurations?.Peta || 6000000,
-  } : {};
-
   const handleNavClick = (page) => {
     setActivePage(page);
   };
 
-  // Page rotation effect (diperbarui agar aman)
   useEffect(() => {
-    // Jangan jalankan timer jika config belum dimuat atau tidak ada halaman
-    if (!config || !activePage || pages.length === 0) return;
-
+    // Don't start auto-advance until configuration is loaded
+    if (!configLoaded) return;
+    
     const duration = pageDurations[activePage];
-    if (!duration) return; // Keamanan jika durasi tidak terdefinisi
-
     const timer = setTimeout(() => {
-      const currentIndex = pages.indexOf(activePage);
+      const currentIndex = pages.indexOf(activePage)
       const nextIndex = (currentIndex + 1) % pages.length;
       setActivePage(pages[nextIndex]);
     }, duration);
-    
     return () => clearTimeout(timer);
-  }, [activePage, config, pages, pageDurations]); // Tambahkan dependensi
+  }, [activePage, configLoaded]); // Reset timer on manual click or config load
 
-  // Tampilkan pesan error jika screen size tidak valid
+  // Don't render until configuration is loaded
+  if (!configLoaded) {
+    return (
+      <div className="min-h-screen bg-white p-4 sm:p-6 lg:p-8">
+        <div className="flex gap-6">
+          {/* Sidebar Skeleton */}
+          <div className="w-20 bg-gray-100 rounded-2xl p-4 space-y-4 animate-pulse">
+            <div className="h-12 w-12 bg-gray-200 rounded-xl mx-auto"></div>
+            <div className="space-y-3 pt-8">
+              {[1, 2, 3, 4].map((i) => (
+                <div key={i} className="h-12 w-12 bg-gray-200 rounded-xl mx-auto"></div>
+              ))}
+            </div>
+          </div>
+
+          {/* Main Content Skeleton */}
+          <div className="flex-1 space-y-6">
+            {/* Top Bar Skeleton */}
+            <div className="bg-gray-100 rounded-2xl p-4 animate-pulse">
+              <div className="h-8 bg-gray-200 rounded w-1/3"></div>
+            </div>
+
+            {/* Content Cards Skeleton */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {[1, 2, 3, 4, 5, 6].map((i) => (
+                <div key={i} className="bg-gray-100 rounded-2xl p-6 space-y-4 animate-pulse">
+                  <div className="h-6 bg-gray-200 rounded w-3/4"></div>
+                  <div className="h-4 bg-gray-200 rounded w-1/2"></div>
+                  <div className="space-y-2">
+                    <div className="h-3 bg-gray-200 rounded w-full"></div>
+                    <div className="h-3 bg-gray-200 rounded w-5/6"></div>
+                    <div className="h-3 bg-gray-200 rounded w-4/6"></div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Bottom Section Skeleton */}
+            <div className="grid grid-cols-2 gap-4">
+              <div className="bg-gray-100 rounded-2xl p-6 space-y-3 animate-pulse">
+                <div className="h-5 bg-gray-200 rounded w-2/3"></div>
+                <div className="h-32 bg-gray-200 rounded"></div>
+              </div>
+              <div className="bg-gray-100 rounded-2xl p-6 space-y-3 animate-pulse">
+                <div className="h-5 bg-gray-200 rounded w-2/3"></div>
+                <div className="h-32 bg-gray-200 rounded"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Clock Skeleton */}
+        <div className="fixed bottom-8 right-8 bg-gray-100 rounded-2xl p-4 animate-pulse">
+          <div className="h-8 w-32 bg-gray-200 rounded"></div>
+        </div>
+
+        {/* Running Text Skeleton */}
+        <div className="fixed bottom-0 left-0 right-0 bg-gray-100 p-3 animate-pulse">
+          <div className="h-4 bg-gray-200 rounded w-full"></div>
+        </div>
+      </div>
+    );
+  }
+
+  // If screen size is invalid, show warning message
   if (!isScreenSizeValid) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-900 text-white p-8">
@@ -123,9 +188,8 @@ const Display = () => {
           </div>
           <div className="bg-gray-800 rounded-lg p-6 mb-6">
             <p className="text-xl mb-4">
-              {/* Logika pesan error ukuran layar disesuaikan dengan validasi */}
-              {screenSize.width < 1880 || screenSize.height < 1020
-                ? "Your screen is too small"
+              {screenSize.width < 1880 || screenSize.height < 1020 
+                ? "Your screen is too small" 
                 : "Your screen is too big"}
             </p>
             <p className="text-gray-400 mb-2">Current screen size:</p>
@@ -146,28 +210,9 @@ const Display = () => {
     );
   }
 
-  // Tampilkan pesan loading saat mengambil data
-  if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-900 text-white text-2xl">
-        Memuat Konfigurasi...
-      </div>
-    );
-  }
-
-  // Tampilkan pesan error jika fetch gagal
-  if (fetchError) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-900 text-red-500 text-2xl">
-        Error: {fetchError}
-      </div>
-    );
-  }
-
-  // Render halaman utama setelah data dimuat
   return (
     <>
-      <div
+      <div 
         className={`min-h-screen flex flex-col md:flex-row font-sans relative overflow-hidden dark bg-cover bg-center`}
         style={{ backgroundImage: `url(${theme.background.image})` }}
       >
@@ -177,38 +222,37 @@ const Display = () => {
         <Sidebar activePage={activePage} handleNavClick={handleNavClick} isDarkMode={isDarkMode} setIsDarkMode={setIsDarkMode} pageDurations={pageDurations} />
         <TopBar isDarkMode={isDarkMode} setIsDarkMode={setIsDarkMode} title={displayTitle} />
 
+
         <main className="flex-1 p-4 sm:p-6 lg:p-8 pb-28 md:pb-8 pt-20 md:pt-15 lg:pt-18 overflow-y-auto z-10">
-          {/* Render konten halaman hanya jika config sudah dimuat */}
-          {config && (
-            <div>
-              <div style={{ display: activePage === 'weather' ? 'block' : 'none' }}>
-                <WeatherPage theme={theme} list={portIds} />
-              </div>
-              <div style={{ display: activePage === 'cities' ? 'block' : 'none' }}>
-                <PortPage theme={theme} portEndPoints={portEndPoints} />
-              </div>
-              <div style={{ display: activePage === 'Perairan' ? 'block' : 'none' }}>
-                <PerairanPage
-                  theme={theme}
-                  isActive={activePage === 'Perairan'}
-                  wilayahAktif={WILAYAH_AKTIF}
-                  viewPoint={view_point}
-                  initialZoom={initial_zoom}
-                  yourLocation={Your_location}
-                />
-              </div>
-              <div style={{ display: activePage === 'Peta' ? 'block' : 'none' }}>
-                <PetaPage theme={theme} />
-              </div>
-            </div>
-          )}
+
+        <div>
+        <div style={{ display: activePage === 'weather' ? 'block' : 'none' }}>
+            <WeatherPage theme={theme} list={portIds} />
+        </div>
+        <div style={{ display: activePage === 'cities' ? 'block' : 'none' }}>
+            <PortPage theme={theme} portEndPoints={portEndPoints} />
+        </div>
+        <div style={{ display: activePage === 'Perairan' ? 'block' : 'none' }}>
+            <PerairanPage 
+              theme={theme} 
+              isActive={activePage === 'Perairan'} 
+              wilayahAktif={WILAYAH_AKTIF}
+              viewPoint={view_point}
+              initialZoom={initial_zoom}
+              yourLocation={Your_location}
+            />
+        </div>
+        <div style={{ display: activePage === 'Peta' ? 'block' : 'none' }}>
+            <PetaPage theme={theme} />
+        </div>
+        </div>
+
         </main>
-        
-        <Clock theme={theme} isDarkMode={isDarkMode} />
+        <Clock theme={theme} isDarkMode={isDarkMode}/>
         <RunningText theme={theme} />
       </div>
     </>
   );
 }
 
-export default Display;
+export default Display
