@@ -69,7 +69,7 @@ const PetaPage = ({ theme = {} }) => {
     }, [loadedVideos]);
 
     return (
-        <div className="min-h-screen w-full">
+        <div className="w-full">
             {/* Header */}
             <div className={`mb-6 ${theme.glassCardClass} p-6 backdrop-blur-md shadow-lg`}>
                 <div className="flex items-center gap-3">

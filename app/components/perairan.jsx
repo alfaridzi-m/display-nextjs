@@ -116,7 +116,19 @@ function getNearestTimeForBucket(bucketISO, allTimes) {
 }
 
 
-const PerairanPage = ({ theme, isActive, wilayahAktif, viewPoint, initialZoom, yourLocation }) => {
+const PerairanPage = ({ 
+  theme, 
+  isActive, 
+  wilayahAktif, 
+  viewPoint, 
+  initialZoom, 
+  yourLocation, 
+  labelPosition = 'center', 
+  labelOffset = { lat: -0.05, lng: 0.05 }, 
+  individualPositions = {},
+  connectorStartPositions = {},
+  waveLegendPosition = { x: null, y: null }
+}) => {
     const [mapTitle] = useState('Peta Prakiraan Cuaca Perairan');
     const [forecastData, setForecastData] = useState(null);
     const [timeSteps, setTimeSteps] = useState([]);
@@ -126,23 +138,6 @@ const PerairanPage = ({ theme, isActive, wilayahAktif, viewPoint, initialZoom, y
     const [isPlaying, setIsPlaying] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
     const [geojson, setGeojson] = useState(null); // BARU: state untuk menyimpan geojson
-    
-    // Load saved settings from localStorage on mount - start with defaults to avoid hydration mismatch
-    const [labelPosition, setLabelPosition] = useState('top-left');
-    const [labelOffset, setLabelOffset] = useState({ lat: -0.05, lng: 0.05 });
-    const [showLabelSettings, setShowLabelSettings] = useState(false); // Toggle settings panel
-    const [individualPositions, setIndividualPositions] = useState({});
-    const [connectorStartPositions, setConnectorStartPositions] = useState({}); // Store custom connector start points
-    
-    const [isDraggingMode, setIsDraggingMode] = useState(false); // Enable/disable dragging mode
-    
-    // Legend position state - start with default to avoid hydration mismatch
-    const [legendPosition, setLegendPosition] = useState({ bottom: 8, right: 8 });
-    const [legendSize, setLegendSize] = useState({ width: 'auto', height: 'auto' });
-    
-    const [isDraggingLegend, setIsDraggingLegend] = useState(false);
-    const [isResizingLegend, setIsResizingLegend] = useState(false);
-    const [isHydrated, setIsHydrated] = useState(false);
 
     const mapRef = useRef(null);
     const leafletRef = useRef(null); // Store Leaflet instance
@@ -151,11 +146,7 @@ const PerairanPage = ({ theme, isActive, wilayahAktif, viewPoint, initialZoom, y
     const intervalRef = useRef(null);
     const labelLayersRef = useRef({});
     const connectorLinesRef = useRef({}); // Store connector lines
-    const connectorStartMarkersRef = useRef({}); // Store connector start point markers
-    const connectorEndMarkersRef = useRef({}); // Store connector end point markers
-    const legendRef = useRef(null);
-    const dragOffsetRef = useRef({ x: 0, y: 0 });
-    const resizeStartRef = useRef({ width: 0, height: 0, x: 0, y: 0 });
+    const connectorEndMarkersRef = useRef({}); // Store connector end point markers (at polygon center)
 
     // Weather icon mapping - moved outside for reuse
     const weatherIcons = {
@@ -193,8 +184,8 @@ const PerairanPage = ({ theme, isActive, wilayahAktif, viewPoint, initialZoom, y
                 border: 2px solid ${KATEGORI_GELOMBANG[forecast.wave_cat]?.color || '#c1d4e3aa'};
                 box-shadow: 0 2px 6px rgba(0,0,0,0.25);
                 white-space: nowrap;
-                pointer-events: ${isDraggingMode ? 'auto' : 'none'};
-                cursor: ${isDraggingMode ? 'move' : 'default'};
+                pointer-events: none;
+                cursor: default;
             ">
                 <div style="font-size: 20px; margin-bottom: 2px;">
                     ${weatherIcon}
@@ -210,10 +201,10 @@ const PerairanPage = ({ theme, isActive, wilayahAktif, viewPoint, initialZoom, y
                 </div>
             </div>
         `;
-    }, [isDraggingMode]);
+    }, []);
 
     // Function to create/update connector line from polygon center to label
-    const updateConnectorLine = useCallback((L, regionId, startPos, labelPos, waveColor) => {
+    const updateConnectorLine = useCallback((L, regionId, centerPos, labelPos, waveColor) => {
         if (!mapRef.current) return;
         
         // Remove old line if exists
@@ -221,30 +212,26 @@ const PerairanPage = ({ theme, isActive, wilayahAktif, viewPoint, initialZoom, y
             mapRef.current.removeLayer(connectorLinesRef.current[regionId]);
         }
         
-        // Remove old start marker if exists
-        if (connectorStartMarkersRef.current[regionId]) {
-            mapRef.current.removeLayer(connectorStartMarkersRef.current[regionId]);
-        }
-        
         // Remove old end marker if exists
         if (connectorEndMarkersRef.current[regionId]) {
             mapRef.current.removeLayer(connectorEndMarkersRef.current[regionId]);
         }
         
-        // Create new line with wave category color - solid and bold
+        // Create new line with wave category color
         const lineColor = waveColor || '#3b82f6';
-        const line = L.polyline([startPos, labelPos], {
+        const line = L.polyline([centerPos, labelPos], {
             color: lineColor,
-            weight: 3,
-            opacity: 0.8,
+            weight: 2,
+            opacity: 0.7,
+            dashArray: '5, 5',
             className: 'connector-line'
         });
         
         line.addTo(mapRef.current);
         connectorLinesRef.current[regionId] = line;
         
-        // Create circle marker at the start point (center polygon)
-        const endMarker = L.circleMarker(startPos, {
+        // Create circle marker at the polygon center (connector point)
+        const endMarker = L.circleMarker(centerPos, {
             radius: 5,
             fillColor: lineColor,
             color: '#ffffff',
@@ -256,58 +243,23 @@ const PerairanPage = ({ theme, isActive, wilayahAktif, viewPoint, initialZoom, y
         
         endMarker.addTo(mapRef.current);
         connectorEndMarkersRef.current[regionId] = endMarker;
-        
-        // Create draggable marker at the start point (only in drag mode)
-        if (isDraggingMode) {
-            // Create a custom div icon for the connector point
-            const connectorIcon = L.divIcon({
-                html: `<div style="
-                    width: 12px;
-                    height: 12px;
-                    background-color: ${lineColor};
-                    border: 2px solid #ffffff;
-                    border-radius: 50%;
-                    box-shadow: 0 2px 4px rgba(0,0,0,0.3);
-                    cursor: move;
-                "></div>`,
-                className: '',
-                iconSize: [12, 12],
-                iconAnchor: [6, 6]
-            });
-            
-            const startMarker = L.marker(startPos, {
-                icon: connectorIcon,
-                draggable: true,
-                autoPan: true
-            });
-            
-            // Update line while dragging start point
-            startMarker.on('drag', function(e) {
-                const newStartPos = e.target.getLatLng();
-                line.setLatLngs([newStartPos, labelPos]);
-            });
-            
-            // Save new start position on drag end
-            startMarker.on('dragend', function(e) {
-                const newStartPos = e.target.getLatLng();
-                setConnectorStartPositions(prev => ({
-                    ...prev,
-                    [regionId]: [newStartPos.lat, newStartPos.lng]
-                }));
-            });
-            
-            startMarker.addTo(mapRef.current);
-            connectorStartMarkersRef.current[regionId] = startMarker;
-        }
-    }, [isDraggingMode]);
+    }, []);
 
     // Function to create meteorological info label for each region
-    const createMeteoLabel = useCallback((L, regionId, forecast, bounds, position = 'top-left', offset = { lat: -0.05, lng: 0.05 }, customPosition = null, layer = null) => {
+    const createMeteoLabel = useCallback((L, regionId, forecast, bounds, position = 'center', offset = { lat: -0.25, lng: 0.25 }, layer = null) => {
         if (!forecast) return null;
         
         // Calculate polygon centroid (center of mass) for connector line
-        let defaultCenter;
-        if (layer && layer.getLatLngs) {
+        let centerPos;
+        
+        // Check if there's a custom connector start position for this region
+        if (connectorStartPositions[regionId] && 
+            connectorStartPositions[regionId].lat !== undefined && 
+            connectorStartPositions[regionId].lng !== undefined) {
+            // Use custom connector start position from configuration
+            const customConnectorPos = connectorStartPositions[regionId];
+            centerPos = [customConnectorPos.lat, customConnectorPos.lng];
+        } else if (layer && layer.getLatLngs) {
             // Calculate centroid of polygon
             const latlngs = layer.getLatLngs()[0]; // Get first ring of coordinates
             let latSum = 0, lngSum = 0, count = 0;
@@ -316,56 +268,14 @@ const PerairanPage = ({ theme, isActive, wilayahAktif, viewPoint, initialZoom, y
                 lngSum += latlng.lng;
                 count++;
             });
-            defaultCenter = [latSum / count, lngSum / count];
+            centerPos = [latSum / count, lngSum / count];
         } else {
             // Fallback to bounds center
-            defaultCenter = bounds.getCenter();
+            centerPos = bounds.getCenter();
         }
-        
-        // Use custom connector start position if available, otherwise use calculated center
-        const startPos = connectorStartPositions[regionId] || defaultCenter;
         
         // Get wave category color
         const waveColor = getColorForWaveCategory(forecast.wave_cat);
-        
-        // Use custom position if available (for individually moved labels)
-        if (customPosition) {
-            const iconHtml = createLabelHTML(forecast);
-            const icon = L.divIcon({
-                html: iconHtml,
-                className: '',
-                iconSize: [90, 80],
-                iconAnchor: [45, 40]
-            });
-            
-            const marker = L.marker(customPosition, { 
-                icon, 
-                draggable: isDraggingMode,
-                interactive: isDraggingMode
-            });
-            
-            // Create connector line with wave color
-            updateConnectorLine(L, regionId, startPos, customPosition, waveColor);
-            
-            if (isDraggingMode) {
-                // Update line while dragging
-                marker.on('drag', function(e) {
-                    const newPos = e.target.getLatLng();
-                    updateConnectorLine(L, regionId, startPos, [newPos.lat, newPos.lng], waveColor);
-                });
-                
-                marker.on('dragend', function(e) {
-                    const newPos = e.target.getLatLng();
-                    setIndividualPositions(prev => ({
-                        ...prev,
-                        [regionId]: [newPos.lat, newPos.lng]
-                    }));
-                    updateConnectorLine(L, regionId, startPos, [newPos.lat, newPos.lng], waveColor);
-                });
-            }
-            
-            return marker;
-        }
         
         // Get polygon bounds
         const northWest = bounds.getNorthWest();
@@ -376,46 +286,23 @@ const PerairanPage = ({ theme, isActive, wilayahAktif, viewPoint, initialZoom, y
         let labelLatLng;
         let anchor;
         
-        switch(position) {
-            case 'top-left':
-                labelLatLng = [northWest.lat + offset.lat, northWest.lng + offset.lng];
-                anchor = [0, 0];
-                break;
-            case 'top-right':
-                labelLatLng = [northWest.lat + offset.lat, southEast.lng + offset.lng];
-                anchor = [90, 0];
-                break;
-            case 'bottom-left':
-                labelLatLng = [southEast.lat + offset.lat, northWest.lng + offset.lng];
-                anchor = [0, 80];
-                break;
-            case 'bottom-right':
-                labelLatLng = [southEast.lat + offset.lat, southEast.lng + offset.lng];
-                anchor = [90, 80];
-                break;
-            case 'center':
-                labelLatLng = [boundsCenter.lat + offset.lat, boundsCenter.lng + offset.lng];
-                anchor = [45, 40];
-                break;
-            case 'top-center':
-                labelLatLng = [northWest.lat + offset.lat, boundsCenter.lng + offset.lng];
-                anchor = [45, 0];
-                break;
-            case 'bottom-center':
-                labelLatLng = [southEast.lat + offset.lat, boundsCenter.lng + offset.lng];
-                anchor = [45, 80];
-                break;
-            case 'left-center':
-                labelLatLng = [boundsCenter.lat + offset.lat, northWest.lng + offset.lng];
-                anchor = [0, 40];
-                break;
-            case 'right-center':
-                labelLatLng = [boundsCenter.lat + offset.lat, southEast.lng + offset.lng];
-                anchor = [90, 40];
-                break;
-            default:
-                labelLatLng = [northWest.lat + offset.lat, northWest.lng + offset.lng];
-                anchor = [0, 0];
+        // Check if there's an individual position for this region
+        if (individualPositions[regionId] && individualPositions[regionId].lat !== undefined && individualPositions[regionId].lng !== undefined) {
+            // Use lat/lng coordinates directly from configuration
+            const customPos = individualPositions[regionId];
+            labelLatLng = [customPos.lat, customPos.lng];
+            anchor = [45, 40];
+        } else {
+            // Use default position logic
+            switch(position) {
+                case 'center':
+                    labelLatLng = [boundsCenter.lat + offset.lat, boundsCenter.lng + offset.lng];
+                    anchor = [45, 40];
+                    break;
+                default:
+                    labelLatLng = [northWest.lat + offset.lat, northWest.lng + offset.lng];
+                    anchor = [0, 0];
+            }
         }
         
         const iconHtml = createLabelHTML(forecast);
@@ -429,32 +316,15 @@ const PerairanPage = ({ theme, isActive, wilayahAktif, viewPoint, initialZoom, y
         
         const marker = L.marker(labelLatLng, { 
             icon, 
-            draggable: isDraggingMode,
-            interactive: isDraggingMode
+            draggable: false,
+            interactive: false
         });
         
         // Create connector line with wave color
-        updateConnectorLine(L, regionId, startPos, labelLatLng, waveColor);
-        
-        if (isDraggingMode) {
-            // Update line while dragging
-            marker.on('drag', function(e) {
-                const newPos = e.target.getLatLng();
-                updateConnectorLine(L, regionId, startPos, [newPos.lat, newPos.lng], waveColor);
-            });
-            
-            marker.on('dragend', function(e) {
-                const newPos = e.target.getLatLng();
-                setIndividualPositions(prev => ({
-                    ...prev,
-                    [regionId]: [newPos.lat, newPos.lng]
-                }));
-                updateConnectorLine(L, regionId, startPos, [newPos.lat, newPos.lng], waveColor);
-            });
-        }
+        updateConnectorLine(L, regionId, centerPos, labelLatLng, waveColor);
         
         return marker;
-    }, [isDraggingMode, createLabelHTML, setIndividualPositions, updateConnectorLine, connectorStartPositions]);
+    }, [createLabelHTML, updateConnectorLine, individualPositions, connectorStartPositions]);
 
     // Tooltip styles removed since region ID center labels are no longer used
 
@@ -494,60 +364,20 @@ const PerairanPage = ({ theme, isActive, wilayahAktif, viewPoint, initialZoom, y
                 if (connectorLinesRef.current[regionId]) {
                     mapRef.current.removeLayer(connectorLinesRef.current[regionId]);
                 }
-                if (connectorStartMarkersRef.current[regionId]) {
-                    mapRef.current.removeLayer(connectorStartMarkersRef.current[regionId]);
-                }
                 if (connectorEndMarkersRef.current[regionId]) {
                     mapRef.current.removeLayer(connectorEndMarkersRef.current[regionId]);
                 }
                 
-                // Create and add new label with current position settings or individual position
+                // Create and add new label with current position settings
                 const bounds = layer.getBounds();
-                const customPos = individualPositions[regionId];
-                const newLabel = createMeteoLabel(L, regionId, forecast, bounds, labelPosition, labelOffset, customPos, layer);
+                const newLabel = createMeteoLabel(L, regionId, forecast, bounds, labelPosition, labelOffset, layer);
                 if (newLabel) {
                     newLabel.addTo(mapRef.current);
                     labelLayersRef.current[regionId] = newLabel;
                 }
             }
         }
-    }, [sixHourlySummary, forecastData, timeSteps, createMeteoLabel, labelPosition, labelOffset, individualPositions]);
-
-    // Load all settings from localStorage after hydration to avoid mismatch
-    useEffect(() => {
-        setIsHydrated(true);
-        if (typeof window !== 'undefined') {
-            const savedLabelPos = localStorage.getItem('labelPosition');
-            if (savedLabelPos) {
-                setLabelPosition(savedLabelPos);
-            }
-            
-            const savedLabelOffset = localStorage.getItem('labelOffset');
-            if (savedLabelOffset) {
-                setLabelOffset(JSON.parse(savedLabelOffset));
-            }
-            
-            const savedIndividualPos = localStorage.getItem('individualPositions');
-            if (savedIndividualPos) {
-                setIndividualPositions(JSON.parse(savedIndividualPos));
-            }
-            
-            const savedLegendPos = localStorage.getItem('legendPosition');
-            if (savedLegendPos) {
-                setLegendPosition(JSON.parse(savedLegendPos));
-            }
-            
-            const savedLegendSize = localStorage.getItem('legendSize');
-            if (savedLegendSize) {
-                setLegendSize(JSON.parse(savedLegendSize));
-            }
-            
-            const savedConnectorStarts = localStorage.getItem('connectorStartPositions');
-            if (savedConnectorStarts) {
-                setConnectorStartPositions(JSON.parse(savedConnectorStarts));
-            }
-        }
-    }, []);
+    }, [sixHourlySummary, forecastData, timeSteps, createMeteoLabel, labelPosition, labelOffset]);
 
     useEffect(() => {
         if (mapRef.current || !mapContainerRef.current) return;
@@ -602,8 +432,7 @@ const PerairanPage = ({ theme, isActive, wilayahAktif, viewPoint, initialZoom, y
                 attribution: '&copy; <a href="https://www.stadiamaps.com/" target="_blank">Stadia Maps</a> &copy; <a href="https://openmaptiles.org/" target="_blank">OpenMapTiles</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
                 ext: 'png'
             }).addTo(mapRef.current);
-            L.marker(yourLocation, { icon: redIcon }).addTo(mapRef.current)
-                
+            L.marker(yourLocation, { icon: redIcon }).addTo(mapRef.current);
 
             try {
                 const geojsonData = await fetch("/wilpro.geojson").then(res => res.json());
@@ -647,8 +476,7 @@ const PerairanPage = ({ theme, isActive, wilayahAktif, viewPoint, initialZoom, y
                         const layer = featureLayersRef.current[regionId];
                         const bounds = layer.getBounds();
                         const forecast = forecastData[regionId]?.[0];
-                        const customPos = individualPositions[regionId];
-                        const label = createMeteoLabel(L, regionId, forecast, bounds, labelPosition, labelOffset, customPos, layer);
+                        const label = createMeteoLabel(L, regionId, forecast, bounds, labelPosition, labelOffset, layer);
                         if (label) {
                             label.addTo(mapRef.current);
                             labelLayersRef.current[regionId] = label;
@@ -746,9 +574,6 @@ const PerairanPage = ({ theme, isActive, wilayahAktif, viewPoint, initialZoom, y
                 if (connectorLinesRef.current[regionId]) {
                     mapRef.current.removeLayer(connectorLinesRef.current[regionId]);
                 }
-                if (connectorStartMarkersRef.current[regionId]) {
-                    mapRef.current.removeLayer(connectorStartMarkersRef.current[regionId]);
-                }
                 if (connectorEndMarkersRef.current[regionId]) {
                     mapRef.current.removeLayer(connectorEndMarkersRef.current[regionId]);
                 }
@@ -761,8 +586,7 @@ const PerairanPage = ({ theme, isActive, wilayahAktif, viewPoint, initialZoom, y
                 if (forecast && featureLayersRef.current[regionId]) {
                     const layer = featureLayersRef.current[regionId];
                     const bounds = layer.getBounds();
-                    const customPos = individualPositions[regionId];
-                    const newLabel = createMeteoLabel(L, regionId, forecast, bounds, labelPosition, labelOffset, customPos, layer);
+                    const newLabel = createMeteoLabel(L, regionId, forecast, bounds, labelPosition, labelOffset, layer);
                     if (newLabel) {
                         newLabel.addTo(mapRef.current);
                         labelLayersRef.current[regionId] = newLabel;
@@ -770,132 +594,7 @@ const PerairanPage = ({ theme, isActive, wilayahAktif, viewPoint, initialZoom, y
                 }
             }
         });
-    }, [labelPosition, labelOffset, forecastData, sixHourlyTimeSteps, currentTimeIndex, timeSteps, createMeteoLabel, individualPositions]);
-
-    // Save labelPosition to localStorage whenever it changes
-    useEffect(() => {
-        if (typeof window !== 'undefined') {
-            localStorage.setItem('labelPosition', labelPosition);
-        }
-    }, [labelPosition]);
-
-    // Save labelOffset to localStorage whenever it changes
-    useEffect(() => {
-        if (typeof window !== 'undefined') {
-            localStorage.setItem('labelOffset', JSON.stringify(labelOffset));
-        }
-    }, [labelOffset]);
-
-    // Save individualPositions to localStorage whenever they change
-    useEffect(() => {
-        if (typeof window !== 'undefined') {
-            localStorage.setItem('individualPositions', JSON.stringify(individualPositions));
-        }
-    }, [individualPositions]);
-    
-    // Save connectorStartPositions to localStorage whenever they change
-    useEffect(() => {
-        if (typeof window !== 'undefined') {
-            localStorage.setItem('connectorStartPositions', JSON.stringify(connectorStartPositions));
-        }
-    }, [connectorStartPositions]);
-    
-    // Save legendPosition to localStorage whenever it changes
-    useEffect(() => {
-        if (typeof window !== 'undefined') {
-            localStorage.setItem('legendPosition', JSON.stringify(legendPosition));
-        }
-    }, [legendPosition]);
-    
-    // Save legendSize to localStorage whenever it changes
-    useEffect(() => {
-        if (typeof window !== 'undefined') {
-            localStorage.setItem('legendSize', JSON.stringify(legendSize));
-        }
-    }, [legendSize]);
-    
-    // Handle legend dragging
-    useEffect(() => {
-        if (!isDraggingMode) return;
-        
-        const handleMouseMove = (e) => {
-            if (!isDraggingLegend || !legendRef.current || !mapContainerRef.current) return;
-            
-            const containerRect = mapContainerRef.current.getBoundingClientRect();
-            const legendRect = legendRef.current.getBoundingClientRect();
-            
-            // Calculate new position relative to container bottom-right
-            const newRight = containerRect.right - e.clientX - dragOffsetRef.current.x;
-            const newBottom = containerRect.bottom - e.clientY - dragOffsetRef.current.y;
-            
-            // Constrain within container bounds
-            const maxRight = containerRect.width - legendRect.width;
-            const maxBottom = containerRect.height - legendRect.height;
-            
-            setLegendPosition({
-                right: Math.max(0, Math.min(newRight, maxRight)),
-                bottom: Math.max(0, Math.min(newBottom, maxBottom))
-            });
-        };
-        
-        const handleMouseUp = () => {
-            setIsDraggingLegend(false);
-        };
-        
-        if (isDraggingLegend) {
-            window.addEventListener('mousemove', handleMouseMove);
-            window.addEventListener('mouseup', handleMouseUp);
-            
-            return () => {
-                window.removeEventListener('mousemove', handleMouseMove);
-                window.removeEventListener('mouseup', handleMouseUp);
-            };
-        }
-    }, [isDraggingMode, isDraggingLegend]);
-    
-    // Handle legend resizing
-    useEffect(() => {
-        if (!isDraggingMode) return;
-        
-        const handleMouseMove = (e) => {
-            if (!isResizingLegend) return;
-            
-            const deltaX = e.clientX - resizeStartRef.current.x;
-            const deltaY = resizeStartRef.current.y - e.clientY; // Inverted because we're measuring from bottom
-            
-            const newWidth = Math.max(150, resizeStartRef.current.width + deltaX);
-            const newHeight = Math.max(100, resizeStartRef.current.height + deltaY);
-            
-            setLegendSize({
-                width: `${newWidth}px`,
-                height: `${newHeight}px`
-            });
-        };
-        
-        const handleMouseUp = () => {
-            setIsResizingLegend(false);
-        };
-        
-        if (isResizingLegend) {
-            window.addEventListener('mousemove', handleMouseMove);
-            window.addEventListener('mouseup', handleMouseUp);
-            
-            return () => {
-                window.removeEventListener('mousemove', handleMouseMove);
-                window.removeEventListener('mouseup', handleMouseUp);
-            };
-        }
-    }, [isDraggingMode, isResizingLegend]);
-
-    // Pause animation when drag mode is activated
-    useEffect(() => {
-        if (isDraggingMode && isPlaying) {
-            setIsPlaying(false);
-        }
-        else if (!isDraggingMode && !isPlaying) {
-            setIsPlaying(true);
-        }
-    }, [isDraggingMode]);
+    }, [labelPosition, labelOffset, forecastData, sixHourlyTimeSteps, currentTimeIndex, timeSteps, createMeteoLabel, wilayahAktif]);
 
     useEffect(() => {
         if (isPlaying) {
@@ -958,39 +657,14 @@ const PerairanPage = ({ theme, isActive, wilayahAktif, viewPoint, initialZoom, y
                                 </div>
                             </div>
                         )}
+                        
                         {/* Legend overlay on top-right of map */}
-                        <div 
-                            ref={legendRef}
-                            className="absolute z-[1000] pointer-events-auto"
-                            style={{
-                                bottom: `${legendPosition.bottom}px`,
-                                right: `${legendPosition.right}px`,
-                                cursor: isDraggingMode && !isResizingLegend ? 'move' : 'default',
-                                width: legendSize.width,
-                                height: legendSize.height,
-                                minWidth: '150px',
-                                minHeight: '100px'
-                            }}
-                            onMouseDown={(e) => {
-                                if (!isDraggingMode) return;
-                                // Only start dragging if not clicking on resize handle
-                                if (e.target.classList.contains('resize-handle')) return;
-                                e.preventDefault();
-                                setIsDraggingLegend(true);
-                                
-                                const legendRect = legendRef.current.getBoundingClientRect();
-                                dragOffsetRef.current = {
-                                    x: legendRect.right - e.clientX,
-                                    y: legendRect.bottom - e.clientY
-                                };
-                            }}
-                        >
-                            <div className={`relative bg-white/80 backdrop-blur rounded-md p-3 shadow border ${isDraggingMode ? 'border-blue-400 ring-2 ring-blue-300' : 'border-white/30 dark:border-white/10'} transition-all h-full flex flex-col`}>
-                                <div className={`text-base font-semibold mb-2 ${theme.text.primary} flex items-center justify-between shrink-0`}>
-                                    <span>Legenda Gelombang</span>
-                                    {isDraggingMode && <span className="text-xl">📍</span>}
+                        <div className="absolute bottom-2 right-2 z-[1000] pointer-events-auto">
+                            <div className="bg-white/80 backdrop-blur rounded-md p-3 shadow border border-white/30 dark:border-white/10">
+                                <div className={`text-base font-semibold mb-2 ${theme.text.primary}`}>
+                                    Legenda Gelombang
                                 </div>
-                                <ul className="space-y-2 overflow-y-auto flex-1">
+                                <ul className="space-y-2">
                                     {Object.entries(KATEGORI_GELOMBANG).filter(([k]) => k !== 'unknown').map(([category, { color, range }]) => (
                                         <li key={category} className="flex items-center justify-between gap-3 text-sm">
                                             <div className="flex items-center gap-2">
@@ -1001,231 +675,9 @@ const PerairanPage = ({ theme, isActive, wilayahAktif, viewPoint, initialZoom, y
                                         </li>
                                     ))}
                                 </ul>
-                                
-                                {/* Resize handles - only show in drag mode */}
-                                {isDraggingMode && (
-                                    <>
-                                        {/* Bottom-right corner resize handle */}
-                                        <div
-                                            className="resize-handle absolute bottom-0 right-0 w-5 h-5 cursor-nwse-resize bg-blue-500 hover:bg-blue-600 rounded-tl"
-                                            style={{ borderBottomRightRadius: '0.375rem' }}
-                                            onMouseDown={(e) => {
-                                                e.stopPropagation();
-                                                e.preventDefault();
-                                                setIsResizingLegend(true);
-                                                const rect = legendRef.current.getBoundingClientRect();
-                                                resizeStartRef.current = {
-                                                    width: rect.width,
-                                                    height: rect.height,
-                                                    x: e.clientX,
-                                                    y: e.clientY
-                                                };
-                                            }}
-                                        >
-                                            <div className="w-full h-full flex items-center justify-center text-white text-xs font-bold">
-                                                ⇲
-                                            </div>
-                                        </div>
-                                        
-                                        {/* Right edge resize handle */}
-                                        <div
-                                            className="resize-handle absolute right-0 top-1/2 -translate-y-1/2 w-2.5 h-16 cursor-ew-resize bg-blue-500 hover:bg-blue-600 rounded-l"
-                                            onMouseDown={(e) => {
-                                                e.stopPropagation();
-                                                e.preventDefault();
-                                                setIsResizingLegend(true);
-                                                const rect = legendRef.current.getBoundingClientRect();
-                                                resizeStartRef.current = {
-                                                    width: rect.width,
-                                                    height: rect.height,
-                                                    x: e.clientX,
-                                                    y: e.clientY
-                                                };
-                                            }}
-                                        />
-                                        
-                                        {/* Bottom edge resize handle */}
-                                        <div
-                                            className="resize-handle absolute bottom-0 left-1/2 -translate-x-1/2 w-16 h-2.5 cursor-ns-resize bg-blue-500 hover:bg-blue-600 rounded-t"
-                                            onMouseDown={(e) => {
-                                                e.stopPropagation();
-                                                e.preventDefault();
-                                                setIsResizingLegend(true);
-                                                const rect = legendRef.current.getBoundingClientRect();
-                                                resizeStartRef.current = {
-                                                    width: rect.width,
-                                                    height: rect.height,
-                                                    x: e.clientX,
-                                                    y: e.clientY
-                                                };
-                                            }}
-                                        />
-                                    </>
-                                )}
                             </div>
                         </div>
                         
-                        {/* Label Position Settings - Moved to bottom-left */}
-                        <div className="absolute bottom-2 left-2 z-[1000] pointer-events-auto group">
-                            {/* Gear icon without background - always visible */}
-                            {!showLabelSettings && (
-                                <div 
-                                    className="cursor-pointer transition-transform hover:scale-110"
-                                    onClick={() => setShowLabelSettings(true)}
-                                    title="Open Settings"
-                                >
-                                    <span className="text-2xl drop-shadow-lg">⚙️</span>
-                                </div>
-                            )}
-                            
-                            {/* Settings panel */}
-                            {showLabelSettings && (
-                                <div className="bg-white/90 backdrop-blur rounded-md p-3 shadow border border-white/30 dark:border-white/10 max-w-[220px]">
-                                    <div className="flex items-center justify-between mb-2">
-                                        <div className={`text-xs font-semibold ${theme.text.primary} flex items-center gap-1`}>
-                                            <span className="text-base">⚙️</span>
-                                            <span>Pengaturan Label</span>
-                                        </div>
-                                        <button
-                                            onClick={() => setShowLabelSettings(false)}
-                                            className="text-sm px-1.5 py-0.5 rounded hover:bg-red-100 text-red-600 hover:text-red-700 font-bold transition-colors"
-                                            title="Close Settings"
-                                        >
-                                            ✕
-                                        </button>
-                                    </div>
-                                
-                                    <div className="space-y-2 pt-2 border-t border-gray-200">
-                                        <div>
-                                            <label className={`text-[10px] font-medium ${theme.text.primary} block mb-1`}>
-                                                Posisi Preset:
-                                            </label>
-                                            <select 
-                                                value={labelPosition} 
-                                                onChange={(e) => setLabelPosition(e.target.value)}
-                                                className="w-full text-xs px-2 py-1 rounded border border-gray-300 bg-white text-gray-900 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                                            >
-                                                <option value="top-left">Kiri Atas</option>
-                                                <option value="top-center">Tengah Atas</option>
-                                                <option value="top-right">Kanan Atas</option>
-                                                <option value="left-center">Kiri Tengah</option>
-                                                <option value="center">Tengah</option>
-                                                <option value="right-center">Kanan Tengah</option>
-                                                <option value="bottom-left">Kiri Bawah</option>
-                                                <option value="bottom-center">Tengah Bawah</option>
-                                                <option value="bottom-right">Kanan Bawah</option>
-                                            </select>
-                                        </div>
-                                        
-                                        <div className="border-t border-gray-200 pt-2 mt-2">
-                                            <div className="flex items-center justify-between mb-2">
-                                                <label className={`text-[10px] font-medium ${theme.text.primary}`}>
-                                                    Mode Drag Label:
-                                                </label>
-                                                <button
-                                                    onClick={() => setIsDraggingMode(!isDraggingMode)}
-                                                    className={`text-xs px-2 py-1 rounded font-semibold ${isDraggingMode ? 'bg-green-500 text-white' : 'bg-gray-300 text-gray-700'}`}
-                                                >
-                                                    {isDraggingMode ? '✓ Aktif' : 'Nonaktif'}
-                                                </button>
-                                            </div>
-                                            {isDraggingMode && (
-                                                <div className="text-[9px] text-amber-600 bg-amber-50 p-1.5 rounded mb-2">
-                                                    💡 Seret label, legenda, dan titik penghubung (bulat kecil) untuk memindahkan posisi
-                                                </div>
-                                            )}
-                                            <button
-                                                onClick={() => setIndividualPositions({})}
-                                                disabled={Object.keys(individualPositions).length === 0}
-                                                className="w-full text-xs px-2 py-1 rounded bg-red-500 text-white hover:bg-red-600 disabled:bg-gray-300 disabled:text-gray-500 mb-1"
-                                            >
-                                                Reset Posisi Individual ({Object.keys(individualPositions).length})
-                                            </button>
-                                            <button
-                                                onClick={() => setLegendPosition({ bottom: 8, right: 8 })}
-                                                className="w-full text-xs px-2 py-1 rounded bg-orange-500 text-white hover:bg-orange-600 mb-1"
-                                            >
-                                                Reset Posisi Legenda
-                                            </button>
-                                            <button
-                                                onClick={() => setLegendSize({ width: 'auto', height: 'auto' })}
-                                                className="w-full text-xs px-2 py-1 rounded bg-teal-500 text-white hover:bg-teal-600 mb-1"
-                                            >
-                                                Reset Ukuran Legenda
-                                            </button>
-                                            <button
-                                                onClick={() => setConnectorStartPositions({})}
-                                                disabled={Object.keys(connectorStartPositions).length === 0}
-                                                className="w-full text-xs px-2 py-1 rounded bg-purple-500 text-white hover:bg-purple-600 disabled:bg-gray-300 disabled:text-gray-500"
-                                            >
-                                                Reset Titik Garis ({Object.keys(connectorStartPositions).length})
-                                            </button>
-                                        </div>
-                                        
-                                        <div>
-                                            <label className={`text-[10px] font-medium ${theme.text.primary} block mb-1`}>
-                                                Offset Lintang (Lat): {labelOffset.lat.toFixed(3)}
-                                            </label>
-                                            <input
-                                                type="range"
-                                                min="-0.3"
-                                                max="0.3"
-                                                step="0.01"
-                                                value={labelOffset.lat}
-                                                onChange={(e) => setLabelOffset(prev => ({ ...prev, lat: parseFloat(e.target.value) }))}
-                                                className="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer"
-                                            />
-                                        </div>
-                                        
-                                        <div>
-                                            <label className={`text-[10px] font-medium ${theme.text.primary} block mb-1`}>
-                                                Offset Bujur (Lng): {labelOffset.lng.toFixed(3)}
-                                            </label>
-                                            <input
-                                                type="range"
-                                                min="-0.3"
-                                                max="0.3"
-                                                step="0.01"
-                                                value={labelOffset.lng}
-                                                onChange={(e) => setLabelOffset(prev => ({ ...prev, lng: parseFloat(e.target.value) }))}
-                                                className="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer"
-                                            />
-                                        </div>
-                                        
-                                        <button
-                                            onClick={() => setLabelOffset({ lat: -0.05, lng: 0.05 })}
-                                            className="w-full text-xs px-2 py-1 rounded bg-gray-500 text-white hover:bg-gray-600"
-                                        >
-                                            Reset Offset
-                                        </button>
-                                        
-                                        <div className="border-t border-gray-200 pt-2 mt-2">
-                                            <button
-                                                onClick={() => {
-                                                    setLabelPosition('top-left');
-                                                    setLabelOffset({ lat: -0.05, lng: 0.05 });
-                                                    setIndividualPositions({});
-                                                    setConnectorStartPositions({});
-                                                    setLegendPosition({ bottom: 8, right: 8 });
-                                                    setLegendSize({ width: 'auto', height: 'auto' });
-                                                    if (typeof window !== 'undefined') {
-                                                        localStorage.removeItem('labelPosition');
-                                                        localStorage.removeItem('labelOffset');
-                                                        localStorage.removeItem('individualPositions');
-                                                        localStorage.removeItem('connectorStartPositions');
-                                                        localStorage.removeItem('legendPosition');
-                                                        localStorage.removeItem('legendSize');
-                                                    }
-                                                }}
-                                                className="w-full text-xs px-2 py-1.5 rounded bg-purple-500 text-white hover:bg-purple-600 font-semibold"
-                                            >
-                                                🔄 Reset Semua Pengaturan
-                                            </button>
-                                        </div>
-                                    </div>
-                                </div>
-                            )}
-                        </div>
                     </div>
                 </div>
             </main>

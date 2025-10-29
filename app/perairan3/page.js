@@ -1,6 +1,8 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import axios from 'axios';
 import WeatherPage from '../components/weatherpage';
 import PortPage from '../components/portpage';
 import Clock from '../components/clock';
@@ -12,6 +14,7 @@ import PetaPage from '../components/petaPage';
 import TopBar from '../components/top-bar';
 
 const Display = () => {
+  const router = useRouter();
   const pages = ['weather', 'cities', 'Perairan', 'Peta'];
   
   const [portIds, setPortIds] = useState([]);
@@ -21,6 +24,10 @@ const Display = () => {
   const [initial_zoom, setInitialZoom] = useState(1);
   const [Your_location, setYourLocation] = useState([0, 0]);
   const [displayTitle, setDisplayTitle] = useState('');
+  const [labelPosition, setLabelPosition] = useState('center');
+  const [individualPositions, setIndividualPositions] = useState({});
+  const [connectorStartPositions, setConnectorStartPositions] = useState({});
+  const [waveLegendPosition, setWaveLegendPosition] = useState({ x: null, y: null });
   const [configLoaded, setConfigLoaded] = useState(false);
   
   const pageDurations = {
@@ -39,23 +46,17 @@ const Display = () => {
   useEffect(() => {
     const loadConfiguration = async () => {
       try {
-        const configId = localStorage.getItem('id');
+        const configId = localStorage.getItem('displayConfigId');
         if (!configId) {
           console.log('No configuration ID found');
-          setConfigLoaded(true);
+          router.push('/config-select');
           return;
         }
 
         console.log('Loading configuration:', configId);
-        const response = await fetch(`/api/configure?id=${configId}`);
+        const response = await axios.get(`/api/configure?id=${configId}`);
         
-        if (!response.ok) {
-          console.error('Failed to fetch configuration:', response.statusText);
-          setConfigLoaded(true);
-          return;
-        }
-
-        const { data: config } = await response.json();
+        const { data: config } = response.data;
         
         // Apply configuration using optional chaining and destructuring
         setDisplayTitle(config.displayTitle || config.nama_display || '');
@@ -65,6 +66,10 @@ const Display = () => {
         setViewPoint(config.map_settings?.view_point || [0, 0]);
         setInitialZoom(config.map_settings?.initial_zoom || 1);
         setYourLocation(config.map_settings?.your_location || [0, 0]);
+        setLabelPosition(config.perairan_settings?.label_position || 'center');
+        setIndividualPositions(config.perairan_settings?.individual_positions || {});
+        setConnectorStartPositions(config.perairan_settings?.connector_start_positions || {});
+        setWaveLegendPosition(config.perairan_settings?.wave_legend_position || { x: null, y: null });
         
         console.log('Configuration loaded:', config.id);
       } catch (error) {
@@ -240,6 +245,10 @@ const Display = () => {
               viewPoint={view_point}
               initialZoom={initial_zoom}
               yourLocation={Your_location}
+              labelPosition={labelPosition}
+              individualPositions={individualPositions}
+              connectorStartPositions={connectorStartPositions}
+              waveLegendPosition={waveLegendPosition}
             />
         </div>
         <div style={{ display: activePage === 'Peta' ? 'block' : 'none' }}>

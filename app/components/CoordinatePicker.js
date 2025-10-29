@@ -4,7 +4,7 @@
 import { MapContainer, TileLayer, Marker, useMap, useMapEvents, GeoJSON } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useRef } from 'react';
 
 // This is a common fix for the default marker icon issue with webpack.
 if (typeof window !== 'undefined') {
@@ -64,6 +64,217 @@ function SyncView({ viewPoint, zoom }) {
   return null;
 }
 
+// Component to render draggable labels for wilayah
+function DraggableLabels({ wilayahGeoJson, selectedWilayahAktif, individualPositions, onLabelPositionChange, connectorStartPositions }) {
+  const map = useMap();
+  const labelsRef = useRef({});
+  const connectorLinesRef = useRef({});
+  const connectorEndMarkersRef = useRef({});
+
+  useEffect(() => {
+    if (!map || !wilayahGeoJson || !selectedWilayahAktif?.length) return;
+
+    // Clear existing labels and connectors
+    Object.values(labelsRef.current).forEach(label => {
+      if (label) map.removeLayer(label);
+    });
+    Object.values(connectorLinesRef.current).forEach(line => {
+      if (line) map.removeLayer(line);
+    });
+    Object.values(connectorEndMarkersRef.current).forEach(marker => {
+      if (marker) map.removeLayer(marker);
+    });
+    labelsRef.current = {};
+    connectorLinesRef.current = {};
+    connectorEndMarkersRef.current = {};
+
+    // Create labels for selected wilayah
+    selectedWilayahAktif.forEach(wilayahId => {
+      const feature = wilayahGeoJson.features?.find(f => f.properties?.ID_MAR === wilayahId);
+      if (!feature) return;
+
+      const bounds = L.geoJSON(feature).getBounds();
+      const center = bounds.getCenter();
+      
+      // Get custom position or use default
+      const customPos = individualPositions[wilayahId];
+      let labelPos;
+      
+      if (customPos && Number.isFinite(customPos.lat) && Number.isFinite(customPos.lng)) {
+        // Use lat/lng coordinates directly
+        labelPos = L.latLng(customPos.lat, customPos.lng);
+      } else {
+        labelPos = center;
+      }
+
+      // Use custom connector start position if available, otherwise use center
+      const connectorStart = connectorStartPositions?.[wilayahId] 
+        ? L.latLng(connectorStartPositions[wilayahId].lat, connectorStartPositions[wilayahId].lng)
+        : center;
+
+      // Create draggable marker with custom HTML (weather info style)
+      const labelIcon = L.divIcon({
+        className: 'custom-label-icon',
+        html: `
+          <div style="
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(4px);
+            border-radius: 8px;
+            padding: 8px 10px;
+            font-size: 11px;
+            font-weight: 600;
+            color: #1f2937;
+            text-align: center;
+            border: 2px solid #3b82f6;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.25);
+            white-space: nowrap;
+            cursor: move;
+          ">
+            <div style="font-size: 20px; margin-bottom: 2px;">
+              ☀️
+            </div>
+            <div style="font-size: 16px; font-weight: 700; color: #3b82f6;">
+              0.4m
+            </div>
+            <div style="font-size: 13px; font-weight: 600; color: #374151; margin-top: 3px;">
+              5kt
+            </div>
+            <div style="font-size: 10px; color: #6b7280; margin-top: 1px;">
+              Tenggara
+            </div>
+          </div>
+        `,
+        iconSize: null,
+        iconAnchor: [0, 0],
+      });
+
+      // Create connector line from start point to label
+      const connectorLine = L.polyline([connectorStart, labelPos], {
+        color: '#3b82f6',
+        weight: 3,
+        opacity: 0.8,
+        className: 'connector-line'
+      });
+      connectorLine.addTo(map);
+      connectorLinesRef.current[wilayahId] = connectorLine;
+
+      // Create circle marker at the connector start point
+      const endMarker = L.circleMarker(connectorStart, {
+        radius: 5,
+        fillColor: '#3b82f6',
+        color: '#ffffff',
+        weight: 2,
+        opacity: 1,
+        fillOpacity: 1,
+        interactive: false
+      });
+      endMarker.addTo(map);
+      connectorEndMarkersRef.current[wilayahId] = endMarker;
+
+      const marker = L.marker(labelPos, {
+        icon: labelIcon,
+        draggable: true,
+      });
+
+      // Update connector line while dragging
+      marker.on('drag', (e) => {
+        const newPos = e.target.getLatLng();
+        connectorLine.setLatLngs([connectorStart, newPos]);
+      });
+
+      marker.on('dragend', (e) => {
+        const newLatLng = e.target.getLatLng();
+        
+        if (onLabelPositionChange) {
+          onLabelPositionChange(wilayahId, { lat: newLatLng.lat, lng: newLatLng.lng });
+        }
+        
+        // Update connector line after drag
+        connectorLine.setLatLngs([connectorStart, newLatLng]);
+      });
+
+      marker.addTo(map);
+      labelsRef.current[wilayahId] = marker;
+    });
+
+    return () => {
+      Object.values(labelsRef.current).forEach(label => {
+        if (label) map.removeLayer(label);
+      });
+      Object.values(connectorLinesRef.current).forEach(line => {
+        if (line) map.removeLayer(line);
+      });
+      Object.values(connectorEndMarkersRef.current).forEach(marker => {
+        if (marker) map.removeLayer(marker);
+      });
+    };
+  }, [map, wilayahGeoJson, selectedWilayahAktif, individualPositions, onLabelPositionChange, connectorStartPositions]);
+
+  return null;
+}
+
+// Component to render draggable connector start markers
+function ConnectorStartMarkers({ wilayahGeoJson, selectedWilayahAktif, connectorStartPositions, onConnectorStartChange }) {
+  const map = useMap();
+  const markersRef = useRef({});
+
+  useEffect(() => {
+    if (!map || !wilayahGeoJson || !selectedWilayahAktif?.length) return;
+
+    // Clear existing markers
+    Object.values(markersRef.current).forEach(marker => {
+      if (marker) map.removeLayer(marker);
+    });
+    markersRef.current = {};
+
+    // Create connector start markers for selected wilayah
+    selectedWilayahAktif.forEach(wilayahId => {
+      const customPos = connectorStartPositions[wilayahId];
+      if (!customPos || !Number.isFinite(customPos.lat) || !Number.isFinite(customPos.lng)) return;
+
+      const markerIcon = L.divIcon({
+        className: 'connector-start-icon',
+        html: `
+          <div style="
+            width: 12px;
+            height: 12px;
+            background: #10b981;
+            border: 2px solid white;
+            border-radius: 50%;
+            cursor: move;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+          "></div>
+        `,
+        iconSize: [12, 12],
+        iconAnchor: [6, 6],
+      });
+
+      const marker = L.marker([customPos.lat, customPos.lng], {
+        icon: markerIcon,
+        draggable: true,
+      });
+
+      marker.on('dragend', (e) => {
+        const newLatLng = e.target.getLatLng();
+        if (onConnectorStartChange) {
+          onConnectorStartChange(wilayahId, { lat: newLatLng.lat, lng: newLatLng.lng });
+        }
+      });
+
+      marker.addTo(map);
+      markersRef.current[wilayahId] = marker;
+    });
+
+    return () => {
+      Object.values(markersRef.current).forEach(marker => {
+        if (marker) map.removeLayer(marker);
+      });
+    };
+  }, [map, wilayahGeoJson, selectedWilayahAktif, connectorStartPositions, onConnectorStartChange]);
+
+  return null;
+}
+
 export default function CoordinatePicker({
   value, // {lat,lng} your location marker
   onChange, // function(latlng)
@@ -81,6 +292,13 @@ export default function CoordinatePicker({
   showWilayah = true, // whether to show wilayah polygons
   zoomSnap = 0.1, // zoom snap precision
   zoomDelta = 0.1, // zoom delta for controls
+  // New props for label configuration
+  showLabels = false, // whether to show draggable labels
+  individualPositions = {}, // individual label positions {wilayahId: {lat, lng}}
+  onLabelPositionChange, // function(wilayahId, {lat, lng})
+  connectorStartPositions = {}, // connector start positions {wilayahId: {lat, lng}}
+  onConnectorStartChange, // function(wilayahId, {lat, lng})
+  disableMapInteraction = false, // disable zoom and panning
 }) {
   const [isMounted, setIsMounted] = useState(false);
   
@@ -186,7 +404,13 @@ export default function CoordinatePicker({
       <MapContainer
         center={initialCenter}
         zoom={initialZoom}
-        scrollWheelZoom={true}
+        scrollWheelZoom={!disableMapInteraction}
+        dragging={!disableMapInteraction}
+        zoomControl={!disableMapInteraction}
+        doubleClickZoom={!disableMapInteraction}
+        touchZoom={!disableMapInteraction}
+        boxZoom={!disableMapInteraction}
+        keyboard={!disableMapInteraction}
         zoomSnap={zoomSnap}
         zoomDelta={zoomDelta}
         style={{ height: '100%', width: '100%', borderRadius: '0.5rem', zIndex: 0 }}
@@ -243,10 +467,10 @@ export default function CoordinatePicker({
                 layer.on('mouseover', (e) => {
                   const targetLayer = e.target;
                   targetLayer.setStyle({
-                    fillColor: isSelected ? '#60a5fa' : '#9ca3af',
+                    fillColor: isSelected ? '#4293f7ff' : '#4b5668ff',
                     fillOpacity: 0.5,
                     weight: 3,
-                    color: isSelected ? '#60a5fa' : '#d1d5db',
+                    color: isSelected ? '#4293f7ff' : '#d1d5db',
                   });
                 });
                 
@@ -266,7 +490,8 @@ export default function CoordinatePicker({
                     const wilayahInfo = {
                       code: wilayahCode,
                       name: perairan || wilayahCode,
-                      properties: feature.properties
+                      properties: feature.properties,
+                      geometry: feature.geometry
                     };
                     onWilayahClick(wilayahCode, wilayahInfo);
                   }
@@ -308,6 +533,27 @@ export default function CoordinatePicker({
             />
           );
         })}
+        
+        {/* Draggable labels for wilayah */}
+        {showLabels && (
+          <DraggableLabels
+            wilayahGeoJson={wilayahGeoJson}
+            selectedWilayahAktif={selectedWilayahAktif}
+            individualPositions={individualPositions}
+            onLabelPositionChange={onLabelPositionChange}
+            connectorStartPositions={connectorStartPositions}
+          />
+        )}
+        
+        {/* Draggable connector start markers */}
+        {connectorStartPositions && Object.keys(connectorStartPositions).length > 0 && (
+          <ConnectorStartMarkers
+            wilayahGeoJson={wilayahGeoJson}
+            selectedWilayahAktif={selectedWilayahAktif}
+            connectorStartPositions={connectorStartPositions}
+            onConnectorStartChange={onConnectorStartChange}
+          />
+        )}
       </MapContainer>
     </div>
   );

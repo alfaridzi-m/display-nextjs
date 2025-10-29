@@ -1,284 +1,255 @@
-'use client'
+'use client';
 
-import { useState, useRef, useEffect, useCallback } from "react";
-// DIHAPUS: import L from "leaflet"; Akan di-import secara dinamis
-import dayjs from "dayjs";
-import utc from 'dayjs/plugin/utc';
-import "leaflet/dist/leaflet.css";
-import { darkTheme, lightTheme } from "../components/theme";
-import InfoPanel from "../components/infopanel";
+import React, { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import axios from 'axios';
+import WeatherPage from '../components/weatherpage';
+import PortPage from '../components/portpage';
+import Clock from '../components/clock';
+import Sidebar from '../components/side-bar';
+import RunningText from '../components/running-text';
+import { lightTheme, darkTheme } from '../components/theme';
+import PerairanPage from '../components/perairan';
+import PetaPage from '../components/petaPage';
+import TopBar from '../components/top-bar';
 
-dayjs.extend(utc);
+const Display = () => {
+  const router = useRouter();
+  const pages = ['weather', 'cities', 'Perairan', 'Peta'];
+  
+  const [portIds, setPortIds] = useState([]);
+  const [portEndPoints, setPortEndPoints] = useState([]);
+  const [WILAYAH_AKTIF, setWilayahAktif] = useState([]);
+  const [view_point, setViewPoint] = useState([0, 0]);
+  const [initial_zoom, setInitialZoom] = useState(1);
+  const [Your_location, setYourLocation] = useState([0, 0]);
+  const [displayTitle, setDisplayTitle] = useState('');
+  const [configLoaded, setConfigLoaded] = useState(false);
+  
+  const pageDurations = {
+    weather: 1500000 * portIds.length,
+    cities: 300000,
+    Perairan: 1500000,
+    Peta: 6000000,
+  }
+  const [activePage, setActivePage] = useState(pages[0]);
+  const [isDarkMode, setIsDarkMode] = useState(false);
+  const [isScreenSizeValid, setIsScreenSizeValid] = useState(true);
+  const [screenSize, setScreenSize] = useState({ width: 0, height: 0 });
+  const theme = isDarkMode ? darkTheme : lightTheme;
 
-// DIUBAH: Konstanta diperbarui sesuai permintaan Anda
-const WILAYAH_AKTIF = ['P.AH.01','P.AH.02','P.AH.03','P.AH.04','P.AH.05','P.AH.06','P.AH.07','P.AH.08','P.AH.09',];
-const view_point = [-3.2186, 128.9];
-const initial_zoom = 7.4;
-const Your_location = [-3.69375, 128.17733];
-
-
-const KATEGORI_GELOMBANG = {
-  Tenang: { color: "#2793f2", range: "0 - 0.5 m" },
-  Rendah: { color: "#00d342", range: "0.5 - 1.25 m" },
-  Sedang: { color: "#fff200", range: "1.25 - 2.5 m" },
-  Tinggi: { color: "#fd8436", range: "2.5 - 4.0 m" },
-  'Sangat Tinggi': { color: "#fb0510", range: "4.0 - 6.0 m" },
-  Ekstrem: { color: "#ef38ce", range: "6.0 - 9.0 m" },
-  'Sangat Ekstrem': { color: "#000000", range: "> 9.0 m"},
-  unknown: { color: "#c1d4e3aa", range: "N/A" }
-};
-
-const getColorForWaveCategory = (category) => {
-  return KATEGORI_GELOMBANG[category]?.color || KATEGORI_GELOMBANG.unknown.color;
-};
-
-// PINDAH: Ekstrak logika fetching dan parsing data ke fungsi terpisah di luar komponen
-async function fetchAndProcessForecasts(url = 'https://maritim.bmkg.go.id/marine-data/combine/forecast.json') {
-    const weather_dict = { 1: 'Cerah', 2: 'Cerah Berawan', 3: 'Berawan', 4: 'Berawan Tebal', 5: 'Hujan Ringan', 6: 'Hujan Sedang', 7: 'Hujan Lebat', 8: 'Hujan Sangat Lebat', 9: 'Hujan Ekstrem', 10: 'Hujan Petir', 11: 'Kabut/Asap', 12: 'Udara Kabur', 13: 'Kabut', 14: 'Petir', '': 'unknown' };
-    const wave_cat_dict = { 1: "Tenang", 2: "Rendah", 3: "Sedang", 4: "Tinggi", 5: "Sangat Tinggi", 6: "Ekstrem", 7: "Sangat Ekstrem", '': 'unknown' };
-    const dir_dict = { 1: "Utara", 2: "Utara Timur Laut", 3: "Timur Laut", 4: "Timur Timur Laut", 5: "Timur", 6: "Timur Tenggara", 7: "Tenggara", 8: "Selatan Tenggara", 9: "Selatan", 10: "Selatan Barat Daya", 11: "Barat Daya", 12: "Barat Barat Daya", 13: "Barat", 14: "Barat Barat Laut", 15: "Barat Laut", 16: "Utara Barat Laut", '': 'unknown' };
-
-
-    function parseFctCode(id, fct_code) {
-        const parts = fct_code.split('|');
-        const timeStr = parts[0];
-        const year = new Date().getFullYear();
-        const base = dayjs.utc(`${year}${timeStr}`, 'YYYYMMDDHH').toDate();
-        const forecasts = parts.slice(1).map((part, idx) => {
-            const row = part.split(',');
-            const dt = new Date(base);
-            const i = idx + 1;
-            dt.setHours(dt.getHours() + (i <= 25 ? i - 1 : 24 + ((i - 25) * 3)));
-            return { id, time: dt, weather: row[0] ? weather_dict[row[0]] : 'unknown', wave_cat: row[1] ? wave_cat_dict[row[1]] : 'unknown', wave_height: row[2] ? parseFloat(row[2]) : 0, wind_speed: row[3] ? parseInt(row[3]) : 0, wind_gust: row[4] ? parseInt(row[4]) : 0, wind_from: row[5] ? dir_dict[row[5]] : 'unknown' };
-        });
-        return forecasts;
-    }
-
-    try {
-        const resp = await fetch(url);
-        if (!resp.ok) throw new Error(`HTTP error! status: ${resp.status}`);
-        const data = await resp.json();
-        const lookup = {};
-        const allTimes = new Set();
-        const now = new Date();
-
-        for (const area of data.area) {
-            if (!WILAYAH_AKTIF.includes(area.id)) continue;
-            const allForecasts = parseFctCode(area.id, area.fct_code);
-            const futureForecasts = allForecasts.filter(f => f.time > now);
-
-            if (futureForecasts.length > 0) {
-                lookup[area.id] = futureForecasts;
-                futureForecasts.forEach(f => allTimes.add(f.time.toISOString()));
-            } else if (allForecasts.length > 0) {
-                const lastForecast = allForecasts[allForecasts.length - 1];
-                lookup[area.id] = [lastForecast];
-                allTimes.add(lastForecast.time.toISOString());
-            }
+  // Load configuration from localStorage and fetch from API
+  useEffect(() => {
+    const loadConfiguration = async () => {
+      try {
+        const configId = localStorage.getItem('displayConfigId');
+        if (!configId) {
+          console.log('No configuration ID found');
+          router.push('/config-select');
+          return;
         }
-        const sortedTimes = Array.from(allTimes).sort();
-        return { forecastData: lookup, timeSteps: sortedTimes };
-    } catch (err) {
-        console.error('Error fetching or parsing forecasts:', err);
-        throw err;
-    }
+
+        console.log('Loading configuration:', configId);
+        const response = await axios.get(`/api/configure?id=${configId}`);
+        
+        const { data: config } = response.data;
+        
+        // Apply configuration using optional chaining and destructuring
+        setDisplayTitle(config.displayTitle || config.nama_display || '');
+        setPortIds(config.ports?.portIds || []);
+        setPortEndPoints(config.ports?.portEndPoints || []);
+        setWilayahAktif(config.wilayah_aktif || []);
+        setViewPoint(config.map_settings?.view_point || [0, 0]);
+        setInitialZoom(config.map_settings?.initial_zoom || 1);
+        setYourLocation(config.map_settings?.your_location || [0, 0]);
+        
+        console.log('Configuration loaded:', config.id);
+      } catch (error) {
+        console.error('Error loading configuration:', error);
+      } finally {
+        setConfigLoaded(true);
+      }
+    };
+
+    loadConfiguration();
+  }, []);
+
+
+  // Screen size validation
+  useEffect(() => {
+    const checkScreenSize = () => {
+      const width = window.innerWidth;
+      const height = window.innerHeight;
+      setScreenSize({ width, height });
+      
+      const isValid = width >= 1880 && width <= 1950 && height >= 950 && height <= 1250;
+      setIsScreenSizeValid(isValid);
+    };
+
+    checkScreenSize();
+    window.addEventListener('resize', checkScreenSize);
+    return () => window.removeEventListener('resize', checkScreenSize);
+  }, []);
+
+  const handleNavClick = (page) => {
+    setActivePage(page);
+  };
+
+  useEffect(() => {
+    // Don't start auto-advance until configuration is loaded
+    if (!configLoaded) return;
+    
+    const duration = pageDurations[activePage];
+    const timer = setTimeout(() => {
+      const currentIndex = pages.indexOf(activePage)
+      const nextIndex = (currentIndex + 1) % pages.length;
+      setActivePage(pages[nextIndex]);
+    }, duration);
+    return () => clearTimeout(timer);
+  }, [activePage, configLoaded]); // Reset timer on manual click or config load
+
+  // Don't render until configuration is loaded
+  if (!configLoaded) {
+    return (
+      <div className="min-h-screen bg-white p-4 sm:p-6 lg:p-8">
+        <div className="flex gap-6">
+          {/* Sidebar Skeleton */}
+          <div className="w-20 bg-gray-100 rounded-2xl p-4 space-y-4 animate-pulse">
+            <div className="h-12 w-12 bg-gray-200 rounded-xl mx-auto"></div>
+            <div className="space-y-3 pt-8">
+              {[1, 2, 3, 4].map((i) => (
+                <div key={i} className="h-12 w-12 bg-gray-200 rounded-xl mx-auto"></div>
+              ))}
+            </div>
+          </div>
+
+          {/* Main Content Skeleton */}
+          <div className="flex-1 space-y-6">
+            {/* Top Bar Skeleton */}
+            <div className="bg-gray-100 rounded-2xl p-4 animate-pulse">
+              <div className="h-8 bg-gray-200 rounded w-1/3"></div>
+            </div>
+
+            {/* Content Cards Skeleton */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {[1, 2, 3, 4, 5, 6].map((i) => (
+                <div key={i} className="bg-gray-100 rounded-2xl p-6 space-y-4 animate-pulse">
+                  <div className="h-6 bg-gray-200 rounded w-3/4"></div>
+                  <div className="h-4 bg-gray-200 rounded w-1/2"></div>
+                  <div className="space-y-2">
+                    <div className="h-3 bg-gray-200 rounded w-full"></div>
+                    <div className="h-3 bg-gray-200 rounded w-5/6"></div>
+                    <div className="h-3 bg-gray-200 rounded w-4/6"></div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Bottom Section Skeleton */}
+            <div className="grid grid-cols-2 gap-4">
+              <div className="bg-gray-100 rounded-2xl p-6 space-y-3 animate-pulse">
+                <div className="h-5 bg-gray-200 rounded w-2/3"></div>
+                <div className="h-32 bg-gray-200 rounded"></div>
+              </div>
+              <div className="bg-gray-100 rounded-2xl p-6 space-y-3 animate-pulse">
+                <div className="h-5 bg-gray-200 rounded w-2/3"></div>
+                <div className="h-32 bg-gray-200 rounded"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Clock Skeleton */}
+        <div className="fixed bottom-8 right-8 bg-gray-100 rounded-2xl p-4 animate-pulse">
+          <div className="h-8 w-32 bg-gray-200 rounded"></div>
+        </div>
+
+        {/* Running Text Skeleton */}
+        <div className="fixed bottom-0 left-0 right-0 bg-gray-100 p-3 animate-pulse">
+          <div className="h-4 bg-gray-200 rounded w-full"></div>
+        </div>
+      </div>
+    );
+  }
+
+  // If screen size is invalid, show warning message
+  if (!isScreenSizeValid) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-900 text-white p-8">
+        <div className="max-w-2xl text-center">
+          <div className="mb-8">
+            <svg className="w-24 h-24 mx-auto text-yellow-500 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+            <h1 className="text-4xl font-bold mb-4">Screen Size Not Supported</h1>
+          </div>
+          <div className="bg-gray-800 rounded-lg p-6 mb-6">
+            <p className="text-xl mb-4">
+              {screenSize.width < 1880 || screenSize.height < 1020 
+                ? "Your screen is too small" 
+                : "Your screen is too big"}
+            </p>
+            <p className="text-gray-400 mb-2">Current screen size:</p>
+            <p className="text-2xl font-mono text-blue-400 mb-4">
+              {screenSize.width} × {screenSize.height}
+            </p>
+            <p className="text-gray-400 mb-2">Required screen size:</p>
+            <p className="text-lg font-mono text-green-400">
+              Width: 1880 - 1950 pixels<br />
+              Height: 1020 - 1150 pixels
+            </p>
+          </div>
+          <p className="text-black bg-yellow-400 rounded-lg p-4 font-semibold">
+            Lakukan zoom in atau zoom out.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <>
+      <div 
+        className={`min-h-screen flex flex-col md:flex-row font-sans relative overflow-hidden dark bg-cover bg-center`}
+        style={{ backgroundImage: `url(${theme.background.image})` }}
+      >
+        <div className={`absolute top-[-10%] left-[-10%] w-96 h-96 rounded-full filter blur-3xl opacity-70 animate-blob ${theme.overlay}`}></div>
+        <div className={`absolute bottom-[-10%] right-[-10%] w-96 h-96 rounded-full filter blur-3xl opacity-70 animate-blob animation-delay-4000 ${theme.overlay2}`}></div>
+
+        <Sidebar activePage={activePage} handleNavClick={handleNavClick} isDarkMode={isDarkMode} setIsDarkMode={setIsDarkMode} pageDurations={pageDurations} />
+        <TopBar isDarkMode={isDarkMode} setIsDarkMode={setIsDarkMode} title={displayTitle} />
+
+
+        <main className="flex-1 p-4 sm:p-6 lg:p-8 pb-28 md:pb-8 pt-20 md:pt-15 lg:pt-18 overflow-y-auto z-10">
+
+        <div>
+        <div style={{ display: activePage === 'weather' ? 'block' : 'none' }}>
+            <WeatherPage theme={theme} list={portIds} />
+        </div>
+        <div style={{ display: activePage === 'cities' ? 'block' : 'none' }}>
+            <PortPage theme={theme} portEndPoints={portEndPoints} />
+        </div>
+        <div style={{ display: activePage === 'Perairan' ? 'block' : 'none' }}>
+            <PerairanPage 
+              theme={theme} 
+              isActive={activePage === 'Perairan'} 
+              wilayahAktif={WILAYAH_AKTIF}
+              viewPoint={view_point}
+              initialZoom={initial_zoom}
+              yourLocation={Your_location}
+            />
+        </div>
+        <div style={{ display: activePage === 'Peta' ? 'block' : 'none' }}>
+            <PetaPage theme={theme} />
+        </div>
+        </div>
+
+        </main>
+        <Clock theme={theme} isDarkMode={isDarkMode}/>
+        <RunningText theme={theme} />
+      </div>
+    </>
+  );
 }
 
-
-const PerairanPage = ({ theme = lightTheme }) => {
-    const [mapTitle] = useState('Peta Prakiraan Kategori Gelombang');
-    const [forecastData, setForecastData] = useState(null);
-    const [timeSteps, setTimeSteps] = useState([]);
-    const [currentTimeIndex, setCurrentTimeIndex] = useState(0);
-    const [isPlaying, setIsPlaying] = useState(false);
-    const [isLoading, setIsLoading] = useState(true);
-    const [geojson, setGeojson] = useState(null); // BARU: state untuk menyimpan geojson
-
-    const mapRef = useRef(null);
-    const featureLayersRef = useRef({});
-    const mapContainerRef = useRef(null);
-    const intervalRef = useRef(null);
-
-    useEffect(() => {
-        const styleId = 'leaflet-custom-tooltip-styles';
-        if (document.getElementById(styleId)) return; 
-
-        const style = document.createElement('style');
-        style.id = styleId;
-        style.innerHTML = `
-            .region-label-tooltip {
-                background-color: rgba(255, 255, 255, 0.75);
-                backdrop-filter: blur(2px);
-                border: none;
-                box-shadow: none;
-                color: #27272a; /* zinc-800 */
-                font-weight: 600; /* semibold */
-                font-size: 10px;
-                padding: 1px 4px;
-                border-radius: 3px;
-            }
-        `;
-        document.head.appendChild(style);
-
-        return () => {
-            const styleElement = document.getElementById(styleId);
-            if (styleElement) {
-                document.head.removeChild(styleElement);
-            }
-        };
-    }, []);
-
-    const updateFeatureStyles = useCallback((timeISO) => {
-        if (!forecastData || Object.keys(featureLayersRef.current).length === 0) return;
-
-        for (const regionId in featureLayersRef.current) {
-            const layer = featureLayersRef.current[regionId];
-            const regionForecasts = forecastData[regionId];
-            let waveCategoryColor = KATEGORI_GELOMBANG.unknown.color;
-            
-            if (regionForecasts) {
-                const forecast = regionForecasts.find(f => f.time.toISOString() === timeISO);
-                if (forecast) {
-                    waveCategoryColor = getColorForWaveCategory(forecast.wave_cat);
-                }
-            }
-            layer.setStyle({ fillColor: waveCategoryColor });
-        }
-    }, [forecastData]);
-
-    useEffect(() => {
-        if (mapRef.current || !mapContainerRef.current) return;
-
-        const initializeMap = async () => {
-            const L = (await import('leaflet')).default;
-
-            delete L.Icon.Default.prototype._getIconUrl;
-            L.Icon.Default.mergeOptions({
-                iconRetinaUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon-2x.png',
-                iconUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon.png',
-                shadowUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-shadow.png',
-            });
-            
-            mapRef.current = L.map(mapContainerRef.current, { attributionControl: false }).setView(view_point, initial_zoom);
-            L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
-            }).addTo(mapRef.current);
-            L.marker(Your_location).addTo(mapRef.current)
-                .bindPopup('Lokasi Anda')
-                .openPopup();
-                
-
-            try {
-                const geojsonData = await fetch("/wilpro.geojson").then(res => res.json());
-                setGeojson(geojsonData); // DIUBAH: Simpan geojson ke state
-                const { forecastData, timeSteps } = await fetchAndProcessForecasts();
-                
-                setForecastData(forecastData);
-                setTimeSteps(timeSteps);
-
-                L.geoJSON(geojsonData, {
-                    style: feature => ({
-                        color: "#ffffffff",
-                        weight: WILAYAH_AKTIF.includes(feature.properties.ID_MAR) ? 1.5 : 0.5,
-                        opacity: 0.8,
-                        fillColor: KATEGORI_GELOMBANG.unknown.color,
-                        fillOpacity: 0.75,
-                    }),
-                    onEachFeature: (feature, layer) => {
-                        const regionId = feature.properties.ID_MAR;
-                        if (WILAYAH_AKTIF.includes(regionId)) {
-                            featureLayersRef.current[regionId] = layer;
-                            // DIHAPUS: Logika onClick untuk memilih wilayah dihapus
-                            layer.bindTooltip(regionId, {
-                                permanent: true,
-                                direction: 'center',
-                                className: 'region-label-tooltip',
-                                offset: [0, 0]
-                            }).openTooltip();
-                        }
-                    }
-                }).addTo(mapRef.current);
-                setIsLoading(false);
-
-            } catch (error) {
-                console.error("Gagal menginisialisasi peta:", error);
-                setIsLoading(false);
-            }
-        };
-
-        initializeMap();
-
-        return () => {
-            if (mapRef.current) {
-                mapRef.current.remove();
-                mapRef.current = null;
-            }
-        };
-    }, []);
-
-    useEffect(() => {
-        if (timeSteps.length > 0) {
-            const currentTime = timeSteps[currentTimeIndex];
-            updateFeatureStyles(currentTime);
-        }
-    }, [currentTimeIndex, timeSteps, updateFeatureStyles]);
-
-
-    useEffect(() => {
-        if (isPlaying) {
-            intervalRef.current = setInterval(() => {
-                setCurrentTimeIndex(prev => (prev + 1) % timeSteps.length);
-            }, 1500);
-        } else {
-            clearInterval(intervalRef.current);
-        }
-        return () => clearInterval(intervalRef.current);
-    }, [isPlaying, timeSteps]);
-    
-    const handleTogglePlay = () => setIsPlaying(!isPlaying);
-
-    return (
-        <div className={`flex flex-col h-[calc(100vh-4rem)] ${theme.glassCardClass} rounded-3xl overflow-hidden`}>
-            <header className={`p-4 z-10 border-b ${theme.border} shrink-0`}>
-                <h1 className={`text-xl font-bold text-center ${theme.text.primary}`}>{mapTitle}</h1>
-                <p className={`text-center text-sm ${theme.text.secondary} mb-3`}>Sumber data: BMKG</p>
-                
-                {!isLoading && timeSteps.length > 0 && (
-                     <div className="max-w-md mx-auto bg-white/20 p-2 rounded-lg shadow-inner flex items-center justify-between space-x-2">
-                        <button onClick={handleTogglePlay} className="px-4 py-2 bg-sky-500 text-white rounded-md font-bold w-24 text-center transition-colors duration-300 hover:bg-sky-600">
-                             {isPlaying ? 'Pause' : 'Play'}
-                        </button>
-                        <div className="text-center flex-grow">
-                            <div className={`text-xs ${theme.text.secondary}`}>Waktu Prakiraan</div>
-                            <div className={`font-bold text-base ${theme.text.primary}`}>
-                                {dayjs(timeSteps[currentTimeIndex]).format('ddd, DD MMM YYYY HH:mm')}
-                            </div>
-                        </div>
-                         {/* DIHAPUS: Placeholder div yang kosong */}
-                     </div>
-                )}
-                {isLoading && <div className="text-center">Memuat data peta...</div>}
-            </header>
-
-            <main className="flex-grow flex flex-row overflow-hidden">
-                <div className="w-1/2 p-4 flex items-center justify-center">
-                    <div ref={mapContainerRef} className="w-full aspect-square rounded-lg shadow-lg" />
-                </div>
-                <div className="w-1/2 p-4 overflow-y-auto">
-                    {/* DIUBAH: Props disesuaikan untuk dasbor */}
-                    <InfoPanel 
-                        activeRegions={WILAYAH_AKTIF}
-                        allForecasts={forecastData}
-                        currentTimeISO={timeSteps.length > 0 ? timeSteps[currentTimeIndex] : null}
-                        waveCategories={KATEGORI_GELOMBANG}
-                        theme={theme}
-                        geojsonFeatures={geojson ? geojson.features : []}
-                    />
-                </div>
-            </main>
-        </div>
-    );
-};
-
-export default PerairanPage;
-
+export default Display

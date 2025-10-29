@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
+import { useRouter } from 'next/navigation';
 import { Wind, Droplets, Compass,Activity,Thermometer, Navigation, Waves } from 'lucide-react';
 import WeatherIcon from './components/weather-icon';
 import Clock from './components/clock';
@@ -16,6 +17,11 @@ import PortPage from './components/portpage';
 
 
 const Display = () => {
+  const router = useRouter();
+  const [isConfigValid, setIsConfigValid] = useState(false);
+  const [isCheckingConfig, setIsCheckingConfig] = useState(true);
+  const [configData, setConfigData] = useState(null);
+  
   const pages = ['weather', 'cities', 'Perairan'];
   const portIds = ['AA005', 'AA003', 'AA006','AA007','AA001'];
   const portEndPoints = ['AA002','AA004', 'AA005', 'AA006', 'AA007','AA008', 'AA009','AA010','AA011'];
@@ -27,6 +33,45 @@ const Display = () => {
   const [activePage, setActivePage] = useState(pages[0]);
   const [isDarkMode, setIsDarkMode] = useState(false);
   const theme = isDarkMode ? darkTheme : lightTheme;
+
+  // Check for configuration on component mount
+  useEffect(() => {
+    const checkConfiguration = async () => {
+      try {
+        // Check if ID exists in localStorage
+        const storedId = localStorage.getItem('displayConfigId');
+        
+        if (!storedId) {
+          // No ID stored, redirect to config selection
+          router.push('/config-select');
+          return;
+        }
+
+        // Validate that the ID exists in the config folder
+        const response = await fetch(`/api/configure?id=${storedId}`);
+        const result = await response.json();
+
+        if (result.success && result.data) {
+          // Configuration is valid
+          setIsConfigValid(true);
+          setConfigData(result.data);
+        } else {
+          // Configuration not found, clear localStorage and redirect
+          localStorage.removeItem('displayConfigId');
+          router.push('/config-select');
+        }
+      } catch (error) {
+        console.error('Error checking configuration:', error);
+        // On error, redirect to config selection
+        localStorage.removeItem('displayConfigId');
+        router.push('/config-select');
+      } finally {
+        setIsCheckingConfig(false);
+      }
+    };
+
+    checkConfiguration();
+  }, [router]);
 
   const handleNavClick = (page) => {
     setActivePage(page);
@@ -41,6 +86,23 @@ const Display = () => {
     }, duration);
     return () => clearTimeout(timer);
   }, [activePage]); // Reset timer on manual click
+
+  // Show loading state while checking configuration
+  if (isCheckingConfig) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-900 via-blue-800 to-indigo-900">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-white mx-auto mb-4"></div>
+          <p className="text-white text-xl">Memeriksa konfigurasi...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Only render the display if configuration is valid
+  if (!isConfigValid) {
+    return null; // Router will handle redirect
+  }
 
   return (
     <>

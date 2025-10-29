@@ -33,13 +33,36 @@ const WeatherPage = ({ theme, list }) => {
 
     useEffect(() => {
         const portIds = list;
+        
+        if (!portIds || portIds.length === 0) {
+            setLoading(false);
+            console.warn('No port IDs provided to WeatherPage');
+            return;
+        }
+
         const urls = portIds.map(id => `https://maritim.bmkg.go.id/marine-data/pelabuhan/${id}.json`);
 
         const fetchAllData = async () => {
             setLoading(true);
             try {
-                const responses = await Promise.all(urls.map(url => axios.get(url)));
-                const allData = responses.map(res => res.data);
+                // Fetch all URLs and handle individual failures
+                const responses = await Promise.allSettled(urls.map(url => axios.get(url)));
+                
+                const allData = responses
+                    .map((result, index) => {
+                        if (result.status === 'fulfilled') {
+                            return result.value.data;
+                        } else {
+                            console.error(`Failed to fetch data for port ${portIds[index]}:`, result.reason.message);
+                            return null;
+                        }
+                    })
+                    .filter(data => data !== null); // Remove failed requests
+                
+                if (allData.length === 0) {
+                    console.error('No valid port data could be loaded');
+                }
+                
                 setPortData(allData);
             } catch (error) {
                 console.error('Gagal mengambil data cuaca:', error.message);
@@ -60,8 +83,17 @@ const WeatherPage = ({ theme, list }) => {
         }
     }, [portData]);
 
-    if (loading || portData.length === 0) {
+    if (loading) {
         return <div className={`text-center p-10 ${theme.text.primary}`}>Loading Weather Data...</div>;
+    }
+
+    if (portData.length === 0) {
+        return (
+            <div className={`flex flex-col items-center justify-center h-screen ${theme.text.primary}`}>
+                <div className="text-xl font-semibold mb-2">No Port Data Available</div>
+                <div className="text-sm opacity-70">Please configure valid port IDs in the settings</div>
+            </div>
+        );
     }
 
     const data = portData[activePortIndex];
