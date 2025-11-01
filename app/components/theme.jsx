@@ -1,10 +1,20 @@
 'use client';
 
+// Helper function to get background image from localStorage
+const getBackgroundImage = () => {
+  if (typeof window !== 'undefined') {
+    return localStorage.getItem('imageBackground') || "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?fm=jpg&q=60&w=3000&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8M3x8YmVhY2h8ZW58MHx8MHx8fDA%3D";
+  }
+  return "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?fm=jpg&q=60&w=3000&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8M3x8YmVhY2h8ZW58MHx8MHx8fDA%3D";
+};
+
 // --- Definisi Tema ---
 const lightTheme = {
   gradient: "bg-gradient-to-br from-sky-400 to-blue-600",
   background: {
-    image: "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?fm=jpg&q=60&w=3000&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8M3x8YmVhY2h8ZW58MHx8MHx8fDA%3D",
+    get image() {
+      return getBackgroundImage();
+    }
   },
   overlay: "bg-cyan-500/20",
   overlay2: "bg-sky-400/30",
@@ -18,7 +28,9 @@ const lightTheme = {
 
 const darkTheme = {
   background: {
-    image: "https://i.guim.co.uk/img/media/327aa3f0c3b8e40ab03b4ae80319064e401c6fbc/377_133_3542_2834/master/3542.jpg?width=1200&height=1200&quality=85&auto=format&fit=crop&s=34d32522f47e4a67286f9894fc81c863",
+    get image() {
+      return getBackgroundImage();
+    }
   },
   overlay: "bg-blue-900/40",
   overlay2: "bg-gray-900/50",

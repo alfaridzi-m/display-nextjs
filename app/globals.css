@@ -163,10 +163,6 @@
   border: 1px solid #777;
 }
 
-.leaflet-interactive {
-  transition: fill 0.75s ease-in-out;
-}
-
 @keyframes slideTransition {
     from {
         opacity: 0;

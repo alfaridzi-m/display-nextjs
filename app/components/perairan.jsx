@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import dayjs from "dayjs";
 import utc from 'dayjs/plugin/utc';
+import { Navigation2 } from 'lucide-react';
 
 dayjs.extend(utc);
 
@@ -19,6 +20,30 @@ const KATEGORI_GELOMBANG = {
 
 const getColorForWaveCategory = (category) => {
   return KATEGORI_GELOMBANG[category]?.color || KATEGORI_GELOMBANG.unknown.color;
+};
+
+// Convert wind direction to rotation angle (0 degrees = North)
+const getWindDirectionAngle = (direction) => {
+  const directionMap = {
+    'Utara': 0,
+    'Utara Timur Laut': 22.5,
+    'Timur Laut': 45,
+    'Timur Timur Laut': 67.5,
+    'Timur': 90,
+    'Timur Tenggara': 112.5,
+    'Tenggara': 135,
+    'Selatan Tenggara': 157.5,
+    'Selatan': 180,
+    'Selatan Barat Daya': 202.5,
+    'Barat Daya': 225,
+    'Barat Barat Daya': 247.5,
+    'Barat': 270,
+    'Barat Barat Laut': 292.5,
+    'Barat Laut': 315,
+    'Utara Barat Laut': 337.5,
+    'unknown': 0
+  };
+  return directionMap[direction] || 0;
 };
 
 // PINDAH: Ekstrak logika fetching dan parsing data ke fungsi terpisah di luar komponen
@@ -170,6 +195,7 @@ const PerairanPage = ({
     // Helper function to create label HTML
     const createLabelHTML = useCallback((forecast) => {
         const weatherIcon = weatherIcons[forecast.weather] || '❓';
+        const windAngle = getWindDirectionAngle(forecast.wind_from);
         
         return `
             <div style="
@@ -186,6 +212,8 @@ const PerairanPage = ({
                 white-space: nowrap;
                 pointer-events: none;
                 cursor: default;
+                postion: relative;
+                justify-content: center;
             ">
                 <div style="font-size: 20px; margin-bottom: 2px;">
                     ${weatherIcon}
@@ -193,11 +221,24 @@ const PerairanPage = ({
                 <div style="font-size: 16px; font-weight: 700; color: ${KATEGORI_GELOMBANG[forecast.wave_cat]?.color || '#c1d4e3aa'};">
                     ${forecast.wave_height}m
                 </div>
-                <div style="font-size: 13px; font-weight: 600; color: #374151; margin-top: 3px;">
-                    ${forecast.wind_speed}kt
+                <div style="display: flex; position: relative; justify-content: center; flex-direction: row; gap: 6px; font-size: 13px; font-weight: 600; color: #374151; margin-top: 3px;">
+                    <svg 
+                        width="14" 
+                        height="14" 
+                        viewBox="0 0 24 24" 
+                        fill="none" 
+                        stroke="currentColor" 
+                        stroke-width="2" 
+                        stroke-linecap="round" 
+                        stroke-linejoin="round"
+                        style="transform: rotate(${windAngle+180}deg); transition: transform 0.3s ease;"
+                    >
+                        <polygon points="12 2 19 21 12 17 5 21 12 2"></polygon>
+                    </svg>
+                    <p>${forecast.wind_speed}kt</p>
                 </div>
-                <div style="font-size: 10px; color: #6b7280; margin-top: 1px;">
-                    ${forecast.wind_from}
+                <div style="display: flex; align-items: center; justify-content: center; gap: 4px; font-size: 10px; color: #6b7280; margin-top: 3px;">
+                    <span>${forecast.wind_from}</span>
                 </div>
             </div>
         `;
@@ -217,13 +258,12 @@ const PerairanPage = ({
             mapRef.current.removeLayer(connectorEndMarkersRef.current[regionId]);
         }
         
-        // Create new line with wave category color
+        // Create new line with wave category color - solid and bold
         const lineColor = waveColor || '#3b82f6';
         const line = L.polyline([centerPos, labelPos], {
             color: lineColor,
-            weight: 2,
-            opacity: 0.7,
-            dashArray: '5, 5',
+            weight: 3,
+            opacity: 0.9,
             className: 'connector-line'
         });
         

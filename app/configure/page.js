@@ -42,7 +42,7 @@ export default function ConfigurePage() {
   const [previewPage, setPreviewPage] = useState('weather');
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [idValidation, setIdValidation] = useState({ isValid: true, message: '', isChecking: false });
-  const [activeTab, setActiveTab] = useState('basic'); // 'basic', 'wilayah', 'location', 'ports'
+  const [activeTab, setActiveTab] = useState('basic'); // 'basic', 'wilayah', 'location', 'ports', 'background'
   const [enableLabelConfig, setEnableLabelConfig] = useState(false);
   const [enableConnectorConfig, setEnableConnectorConfig] = useState(false);
   const [waveLegendPosition, setWaveLegendPosition] = useState({ x: null, y: null });
@@ -54,7 +54,7 @@ export default function ConfigurePage() {
     // map settings inputs
     viewPointLat: "",
     viewPointLng: "",
-    initialZoom: 8,
+    initialZoom: 5,
     // your location via map picker
     yourLocation: null, // { lat, lng }
     // selections via map clicks
@@ -321,6 +321,56 @@ export default function ConfigurePage() {
     setIsDraggingWaveLegend(false);
   }, []);
 
+  // Handle image upload and save to localStorage
+  const handleImageUpload = useCallback((e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Check if file is an image
+    if (!file.type.startsWith('image/')) {
+      alert('Harap pilih file gambar (JPG, PNG, GIF, dll.)');
+      return;
+    }
+
+    // Check file size (max 5MB)
+    const maxSize = 5 * 1024 * 1024; // 5MB in bytes
+    if (file.size > maxSize) {
+      alert('Ukuran file terlalu besar. Maksimal 5MB.');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const base64String = event.target?.result;
+      if (base64String && typeof base64String === 'string') {
+        try {
+          localStorage.setItem('imageBackground', base64String);
+          alert('Gambar berhasil disimpan!');
+        } catch (error) {
+          if (error.name === 'QuotaExceededError') {
+            alert('Penyimpanan penuh. Gambar terlalu besar atau storage penuh.');
+          } else {
+            alert('Gagal menyimpan gambar: ' + error.message);
+          }
+          console.error('Error saving image to localStorage:', error);
+        }
+      }
+    };
+    reader.onerror = () => {
+      alert('Gagal membaca file gambar');
+    };
+    reader.readAsDataURL(file);
+  }, []);
+
+  // Remove background image from localStorage
+  const handleRemoveImage = useCallback(() => {
+    const confirm = window.confirm('Apakah Anda yakin ingin menghapus gambar latar belakang?');
+    if (confirm) {
+      localStorage.removeItem('imageBackground');
+      alert('Gambar latar belakang berhasil dihapus!');
+    }
+  }, []);
+
   // Fill dummy data for label positions
   const fillDummyLabelPositions = useCallback(() => {
     const dummyPositions = {};
@@ -452,11 +502,8 @@ export default function ConfigurePage() {
         }
         alert('Konfigurasi berhasil disimpan!');
         
-        // Ask if user wants to use this configuration now
-        const useNow = confirm('Konfigurasi berhasil disimpan! Apakah Anda ingin menggunakan konfigurasi ini sekarang?');
-        if (useNow) {
-          window.location.href = '/';
-        }
+        // Redirect to perairan3 page
+        router.push('/perairan3');
       } else {
         alert(`Gagal menyimpan: ${result.error}`);
       }
@@ -874,6 +921,22 @@ export default function ConfigurePage() {
                   )}
                 </div>
               </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab('background')}
+                className={`whitespace-nowrap py-4 px-6 border-b-2 font-medium text-sm transition-all ${
+                  activeTab === 'background'
+                    ? 'border-blue-500 text-blue-400'
+                    : 'border-transparent text-gray-400 hover:text-gray-300 hover:border-gray-300'
+                }`}
+              >
+                <div className="flex items-center gap-2">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clipRule="evenodd" />
+                  </svg>
+                  Latar Belakang
+                </div>
+              </button>
             </nav>
           </div>
 
@@ -893,7 +956,7 @@ export default function ConfigurePage() {
           {/* ID and Kota */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label htmlFor="id" className="block text-sm font-medium text-gray-300 mb-2">ID Konfigurasi</label>
+              <label htmlFor="id" className="block text-sm font-medium text-gray-300 mb-2">ID Konfigurasi (Simpan ID untuk login) </label>
               <div className="relative">
                 <input
                   type="text"
@@ -910,7 +973,7 @@ export default function ConfigurePage() {
                       ? 'border-green-500 focus:ring-green-500 focus:border-green-500'
                       : 'border-red-500 focus:ring-red-500 focus:border-red-500'
                   }`}
-                  placeholder="Contoh: mks1992"
+                  placeholder="Contoh: bmkg196"
                   pattern="[a-zA-Z0-9]+"
                   title="Hanya huruf dan angka (tanpa spasi atau karakter khusus)"
                 />
@@ -941,7 +1004,7 @@ export default function ConfigurePage() {
                 </p>
               )}
               {!formData.id && (
-                <p className="text-xs text-gray-400 mt-1">Hanya huruf dan angka, tanpa spasi atau karakter khusus</p>
+                <p className="text-xs text-white mt-1">Hanya huruf dan angka, tanpa spasi atau karakter khusus. ID akan terdaftar ke Server dan localStorage dengan key <code className="bg-red-700 px-1 rounded">displayConfigId</code></p>
               )}
             </div>
             <div>
@@ -975,27 +1038,31 @@ export default function ConfigurePage() {
           {/* Map Settings: View Point and Zoom */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">View Point - Latitude</label>
+              <label className="block text-sm font-medium text-gray-300 mb-2">Titik Tengah - Latitude</label>
               <input
                 type="number"
                 step="any"
                 name="viewPointLat"
                 value={formData.viewPointLat}
                 onChange={handleInputChange}
-                className="w-full bg-gray-700 border border-gray-600 rounded-lg p-3 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-300"
-                placeholder="Contoh: -3.424"
+                className="w-full bg-gray-700 border border-gray-600 rounded-lg p-3 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-300 opacity-60 cursor-not-allowed"
+                placeholder="Geser peta di bawah untuk mendapatkan nilai"
+                disabled
+                readOnly
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">View Point - Longitude</label>
+              <label className="block text-sm font-medium text-gray-300 mb-2">Titik Tengah - Longitude</label>
               <input
                 type="number"
                 step="any"
                 name="viewPointLng"
                 value={formData.viewPointLng}
                 onChange={handleInputChange}
-                className="w-full bg-gray-700 border border-gray-600 rounded-lg p-3 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-300"
-                placeholder="Contoh: 128.9"
+                className="w-full bg-gray-700 border border-gray-600 rounded-lg p-3 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-300 opacity-60 cursor-not-allowed"
+                placeholder="Geser peta di bawah untuk mendapatkan nilai"
+                disabled
+                readOnly
               />
             </div>
             <div>
@@ -1007,8 +1074,10 @@ export default function ConfigurePage() {
                 name="initialZoom"
                 value={formData.initialZoom}
                 onChange={handleInputChange}
-                className="w-full bg-gray-700 border border-gray-600 rounded-lg p-3 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-300"
+                className="w-full bg-gray-700 border border-gray-600 rounded-lg p-3 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-300 cursor-not-allowed opacity-60"
                 placeholder="Contoh: 8"
+                disabled
+                readOnly
               />
             </div>
           </div>
@@ -1026,14 +1095,16 @@ export default function ConfigurePage() {
                   </h3>
                   <p className="text-sm text-gray-300 mb-4">
                     Klik pada polygon wilayah di peta untuk memilih wilayah perairan yang akan ditampilkan. 
-                    Anda juga dapat mengatur view point dan zoom dengan menggeser dan memperbesar/memperkecil peta.
+                  </p>
+                  <p className="text-base text-gray-300 mb-4">
+                    Ukuran tampilan peta saat ini <i>adalah ukuran yang sama dengan tampilan akhir pada layar display.</i>
                   </p>
 
 
           {/* Map 1: Wilayah Aktif Selection */}
           <div>
             <div 
-              className="relative w-[1741px] h-[878px] rounded-md overflow-hidden mx-auto border-2 border-cyan-500/30"
+              className="relative w-[1720px] h-[878px] rounded-md overflow-hidden mx-auto border-2 border-cyan-500/30"
               onMouseMove={handleWaveLegendMouseMove}
               onMouseUp={handleWaveLegendMouseUp}
               onMouseLeave={handleWaveLegendMouseUp}
@@ -1168,7 +1239,7 @@ export default function ConfigurePage() {
                         </div>
                       )}
                     </div>
-
+                      <h2 className="lg:col-span-2 text-md font-semibold text-gray-300 mb-2 mt-4 lg:mt-0">Mengatur Posisi Label dan garis penghubung</h2>
                     {/* Individual Label Positions & Connector Positions Side by Side */}
                     <div className="lg:col-span-2 grid grid-cols-1 lg:grid-cols-2 gap-4">
                       {/* Individual Label Positions - with checkbox */}
@@ -1201,6 +1272,7 @@ export default function ConfigurePage() {
                           <p className="text-xs text-gray-500 italic">Pilih wilayah terlebih dahulu untuk mengaktifkan konfigurasi label</p>
                         ) : enableLabelConfig ? (
                           <div>
+                            <p className="text-xs text-white bg-red-900 rounded-sm mb-1 animate-pulse w-fit p-1">Drag label di map</p>
                             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-2 xl:grid-cols-3 gap-2 max-h-80 overflow-y-auto p-1">
                               {formData.wilayahAktif.map((wilayahId) => (
                                 <div key={wilayahId} className="bg-gray-700/40 border border-gray-600/50 rounded p-2 w-full max-w-[200px]">
@@ -1265,17 +1337,15 @@ export default function ConfigurePage() {
                                 </div>
                               ))}
                             </div>
-                            <p className="text-xs text-gray-400 mt-2">
-                              <strong>Tip:</strong> Masukkan koordinat latitude dan longitude untuk posisi label cuaca pada setiap wilayah.
-                            </p>
                           </div>
                         ) : (
-                          <p className="text-xs text-gray-500 italic">Centang kotak di atas untuk mengaktifkan konfigurasi posisi label individual</p>
+                          <p className="text-xs text-gray-500 italic">Centang kotak di atas untuk menampilkan posisi label</p>
                         )}
                       </div>
 
                       {/* Connector Start Positions - with checkbox */}
                       <div className="bg-gray-800/30 rounded-lg p-4 border border-gray-700/50">
+                      
                         <div className="flex items-center justify-between mb-3">
                           <label className="flex items-center gap-2 cursor-pointer">
                             <input
@@ -1304,6 +1374,7 @@ export default function ConfigurePage() {
                           <p className="text-xs text-gray-500 italic">Pilih wilayah terlebih dahulu untuk mengaktifkan konfigurasi konektor</p>
                         ) : enableConnectorConfig ? (
                           <div>
+                            <p className="text-xs text-white bg-red-900 rounded-sm mb-1 animate-pulse w-fit p-1">Drag titik di map</p>
                             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-2 xl:grid-cols-3 gap-2 max-h-80 overflow-y-auto p-1">
                               {formData.wilayahAktif.map((wilayahId) => (
                                 <div key={wilayahId} className="bg-gray-700/40 border border-gray-600/50 rounded p-2 w-full max-w-[200px]">
@@ -1367,10 +1438,7 @@ export default function ConfigurePage() {
                                   </div>
                                 </div>
                               ))}
-                            </div>
-                            <p className="text-xs text-gray-400 mt-2">
-                              <strong>Tip:</strong> Koordinat geografis untuk titik awal garis konektor.
-                            </p>
+                            </div>                          
                           </div>
                         ) : (
                           <p className="text-xs text-gray-500 italic">Centang kotak di atas untuk mengaktifkan konfigurasi posisi konektor</p>
@@ -1591,6 +1659,105 @@ export default function ConfigurePage() {
               </div>
             )}
           </div>
+                </div>
+              </div>
+            )}
+
+            {/* Background Image Tab */}
+            {activeTab === 'background' && (
+              <div className="space-y-6">
+                <div className="bg-gradient-to-r from-purple-900/20 to-pink-900/20 border border-purple-500/30 rounded-lg p-6">
+                  <h3 className="text-lg font-semibold text-purple-300 mb-4 flex items-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" viewBox="0 0 20 20" fill="currentColor">
+                      <path fillRule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clipRule="evenodd" />
+                    </svg>
+                    Upload Gambar Latar Belakang
+                  </h3>
+                  
+                  <div className="space-y-4">
+                    <div className="bg-purple-900/20 border border-purple-500/40 rounded-lg p-4">
+                      <h4 className="text-sm font-semibold text-purple-300 mb-2">Informasi</h4>
+                      <ul className="text-xs text-gray-300 space-y-1 list-disc list-inside">
+                        <h2 className="font-bold text-sm">Pengaturan latar belakang hanya akan berhasil jika proses pembuatan ID dilakukan di PC display</h2>
+                        <li>Gambar akan disimpan di local storage browser dengan nama <code className="bg-gray-700 px-1 rounded">imageBackground</code></li>
+                        <li>Format yang didukung: JPG, PNG, GIF, WebP, dll.</li>
+                        <li>Ukuran maksimal: 5 MB</li>
+                        <li>Gambar akan tetap tersimpan hingga dihapus secara manual</li>
+                      </ul>
+                    </div>
+
+                    {/* Combined Upload and Preview Section */}
+                    <div className="bg-gray-900/50 border-2 border-dashed border-purple-500/50 rounded-lg p-6 hover:border-purple-500 transition-colors">
+                      {typeof window !== 'undefined' && localStorage.getItem('imageBackground') ? (
+                        <div className="space-y-4">
+                          {/* Preview */}
+                          <div className="relative rounded-lg overflow-hidden bg-gray-800">
+                            <img 
+                              src={localStorage.getItem('imageBackground')} 
+                              alt="Background preview" 
+                              className="w-full h-auto object-contain max-h-96"
+                            />
+                          </div>
+                          
+                          {/* Action Buttons */}
+                          <div className="flex gap-3">
+                            <label 
+                              htmlFor="background-image-upload" 
+                              className="flex-1 cursor-pointer inline-flex items-center justify-center gap-2 px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-medium rounded-lg transition-all duration-300 shadow-lg hover:shadow-xl"
+                            >
+                              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
+                              </svg>
+                              Ganti Gambar
+                            </label>
+                            <input
+                              id="background-image-upload"
+                              type="file"
+                              accept="image/*"
+                              onChange={handleImageUpload}
+                              className="hidden"
+                            />
+                            <button
+                              type="button"
+                              onClick={handleRemoveImage}
+                              className="px-6 py-3 bg-red-600 hover:bg-red-700 text-white font-medium rounded-lg transition-colors flex items-center justify-center gap-2"
+                            >
+                              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
+                              </svg>
+                              Hapus
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="text-center py-8">
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-16 w-16 mx-auto mb-4 text-purple-400 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                          </svg>
+                          <p className="text-gray-400 mb-4">Belum ada gambar yang diunggah</p>
+                          <label 
+                            htmlFor="background-image-upload" 
+                            className="cursor-pointer inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-medium rounded-lg transition-all duration-300 shadow-lg hover:shadow-xl"
+                          >
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                              <path fillRule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM6.293 6.707a1 1 0 010-1.414l3-3a1 1 0 011.414 0l3 3a1 1 0 01-1.414 1.414L11 5.414V13a1 1 0 11-2 0V5.414L7.707 6.707a1 1 0 01-1.414 0z" clipRule="evenodd" />
+                            </svg>
+                            Pilih Gambar
+                          </label>
+                          <input
+                            id="background-image-upload"
+                            type="file"
+                            accept="image/*"
+                            onChange={handleImageUpload}
+                            className="hidden"
+                          />
+                          <p className="text-sm text-gray-500 mt-3">
+                            Klik untuk memilih gambar dari komputer Anda
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
                 </div>
               </div>
             )}
