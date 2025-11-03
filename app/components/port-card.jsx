@@ -14,7 +14,7 @@ const getWaveColor = (category) => {
     return colors[category] || 'bg-gray-400';
 };
 
-const PortCard = ({dayLabel , tempRange, conditionText, windSpeed, windGust, windDirection, waveRange, waveCategory, theme }) => (
+const PortCard = ({dayLabel , tempMin, tempMax, conditionText, windSpeed, windGust, windDirection, waveRange, waveCategory, theme }) => (
     <div className={`${theme.glassCardClass} p-5 flex flex-col h-[260px] w-[280px]`}>
         <div>
             <p className={`${theme.text.primary} text-xl font-bold`}>{dayLabel}</p>
@@ -26,14 +26,17 @@ const PortCard = ({dayLabel , tempRange, conditionText, windSpeed, windGust, win
                     <WeatherIcon condition={conditionText} size={90}/>
                     <p className={`text-lg font-bold text-center ${theme.text.primary} mt-1`}>{conditionText}</p>
                 </div>
-                <div className={`w-1/2 self-stretch border-l ${theme.border} flex flex-col justify-center space-y-3 pl-4`}>
-                    <div className="flex flex-col items-center justify-center">
-                        <Thermometer className="w-6 h-6 mb-1 text-red-500" />
-                        <span className={`${theme.text.primary} text-sm font-bold`}>{tempRange}</span>
+                <div className={`w-1/2 self-stretch border-l ${theme.border} flex flex-col justify-between space-y-3 pl-4`}>
+                    <div className="flex flex-row items-center justify-center">
+                        <Thermometer className="w-13 h-13 text-red-500" />
+                        <div className="flex flex-col">
+                            <span className={`${theme.text.primary} text-lg font-medium`}>{tempMax}°</span>
+                            <span className={`${theme.text.primary} text-lg font-medium`}>{tempMin}°</span>
+                        </div>
                     </div>
                     <div className="flex flex-col items-center justify-center">
-                        <Navigation2 className={`w-6 h-6 mb-1 ${theme.text.secondary}`} style={{ transform: `rotate(${(windDirection)+180}deg)` }} />
-                        <span className={`${theme.text.primary} text-sm font-bold`}>{windSpeed} knot</span>
+                        <Navigation2 className={`w-8 h-8 mb-1 ${theme.text.secondary}`} style={{ transform: `rotate(${(windDirection)+180}deg)` }} />
+                        <span className={`${theme.text.primary} text-lg font-bold`}>{windSpeed} knot</span>
                         <span className={`${theme.text.secondary} text-xs font-bold`}>Gust {windGust} knot</span>
                     </div>
                 </div>

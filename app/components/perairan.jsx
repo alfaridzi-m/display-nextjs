@@ -219,7 +219,10 @@ const PerairanPage = ({
                     ${weatherIcon}
                 </div>
                 <div style="font-size: 16px; font-weight: 700; color: ${KATEGORI_GELOMBANG[forecast.wave_cat]?.color || '#c1d4e3aa'};">
-                    ${forecast.wave_height}m
+                    ${forecast.wave_height} m
+                </div>
+                <div style="font-size: 12px; color: #042464ff; background: #e0e7ffcc; width: 100%;">
+                    <p>Angin</p>
                 </div>
                 <div style="display: flex; position: relative; justify-content: center; flex-direction: row; gap: 6px; font-size: 13px; font-weight: 600; color: #374151; margin-top: 3px;">
                     <svg 
@@ -259,10 +262,10 @@ const PerairanPage = ({
         }
         
         // Create new line with wave category color - solid and bold
-        const lineColor = waveColor || '#3b82f6';
+        const lineColor = '#dededeff';
         const line = L.polyline([centerPos, labelPos], {
             color: lineColor,
-            weight: 3,
+            weight: 8,
             opacity: 0.9,
             className: 'connector-line'
         });
@@ -273,7 +276,7 @@ const PerairanPage = ({
         // Create circle marker at the polygon center (connector point)
         const endMarker = L.circleMarker(centerPos, {
             radius: 5,
-            fillColor: lineColor,
+            fillColor: waveColor,
             color: '#ffffff',
             weight: 2,
             opacity: 1,
@@ -486,9 +489,7 @@ const PerairanPage = ({
                 const { summaries, timeSteps: sixSteps } = summarizeForecastsEvery6Hours(forecastData);
                 setSixHourlySummary(summaries);
                 setSixHourlyTimeSteps(sixSteps);
-                console.log("sixHourlyTimeSteps:", sixSteps);
-                console.log("sixHourlySummary:", summaries);
-
+               
                 const geoJsonLayer = L.geoJSON(geojsonData, {
                     style: feature => ({
                         color: "#ffffffff",

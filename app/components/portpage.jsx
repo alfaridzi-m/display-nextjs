@@ -93,7 +93,8 @@ const PortPage = ({ theme, portEndPoints }) => {
 
         return {
             name: port.name.replace('Pelabuhan ', ''),
-            tempRange: `${minTemp}° - ${maxTemp}°`,
+            tempMin: minTemp,
+            tempMax: maxTemp,
             conditionText: worstWeather,
             windSpeed: dailyForecasts[0].wind_speed,
             windGust: maxWindGust,
@@ -141,7 +142,8 @@ const PortPage = ({ theme, portEndPoints }) => {
                                                 <PortCard 
                                                     key={`${port.code}-${dayIndex}`}
                                                     dayLabel={label}
-                                                    tempRange={summary.tempRange}
+                                                    tempMin={summary.tempMin}
+                                                    tempMax={summary.tempMax}
                                                     conditionText={summary.conditionText}
                                                     windSpeed={summary.windSpeed}
                                                     windGust={summary.windGust}

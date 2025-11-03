@@ -14,6 +14,8 @@ import { lightTheme, darkTheme } from '../components/theme';
 import PerairanPage from '../components/perairan';
 import PetaPage from '../components/petaPage';
 import TopBar from '../components/top-bar';
+import { ToastContainer } from '../components/toast';
+import { useToast } from '../hooks/useToast';
 
 // Dynamically import the map component to avoid SSR issues with Leaflet
 const CoordinatePicker = dynamic(() => import("../components/CoordinatePicker"), {
@@ -38,6 +40,7 @@ const KATEGORI_GELOMBANG = {
 
 export default function ConfigurePage() {
   const router = useRouter();
+  const { toasts, removeToast, toast } = useToast();
   const [showPreview, setShowPreview] = useState(false);
   const [previewPage, setPreviewPage] = useState('weather');
   const [isDarkMode, setIsDarkMode] = useState(false);
@@ -45,8 +48,6 @@ export default function ConfigurePage() {
   const [activeTab, setActiveTab] = useState('basic'); // 'basic', 'wilayah', 'location', 'ports', 'background'
   const [enableLabelConfig, setEnableLabelConfig] = useState(false);
   const [enableConnectorConfig, setEnableConnectorConfig] = useState(false);
-  const [waveLegendPosition, setWaveLegendPosition] = useState({ x: null, y: null });
-  const [isDraggingWaveLegend, setIsDraggingWaveLegend] = useState(false);
   
   const [formData, setFormData] = useState({
     id: "",
@@ -67,7 +68,6 @@ export default function ConfigurePage() {
     connectorStartPositions: {}, // connector start positions per region
     legendPosition: { bottom: 8, right: 8 }, // legend position
     legendSize: { width: "auto", height: "auto" }, // legend size
-    waveLegendPosition: { x: null, y: null }, // wave legend position from drag (null = use default)
   });
 
   const theme = isDarkMode ? darkTheme : lightTheme;
@@ -100,13 +100,6 @@ export default function ConfigurePage() {
       })
       .catch(err => console.error('Failed to load port data:', err));
   }, []);
-
-  // Sync wave legend position with formData
-  useEffect(() => {
-    if (formData.waveLegendPosition) {
-      setWaveLegendPosition(formData.waveLegendPosition);
-    }
-  }, [formData.waveLegendPosition]);
 
   // Debounced ID validation check
   useEffect(() => {
@@ -296,31 +289,6 @@ export default function ConfigurePage() {
     }));
   }, []);
 
-  // Handle wave legend drag
-  const handleWaveLegendMouseDown = useCallback((e) => {
-    setIsDraggingWaveLegend(true);
-    e.preventDefault();
-  }, []);
-
-  const handleWaveLegendMouseMove = useCallback((e) => {
-    if (!isDraggingWaveLegend) return;
-    
-    const mapContainer = e.currentTarget;
-    const rect = mapContainer.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
-    
-    setWaveLegendPosition({ x, y });
-    setFormData(prev => ({
-      ...prev,
-      waveLegendPosition: { x, y }
-    }));
-  }, [isDraggingWaveLegend]);
-
-  const handleWaveLegendMouseUp = useCallback(() => {
-    setIsDraggingWaveLegend(false);
-  }, []);
-
   // Handle image upload and save to localStorage
   const handleImageUpload = useCallback((e) => {
     const file = e.target.files?.[0];
@@ -328,14 +296,14 @@ export default function ConfigurePage() {
 
     // Check if file is an image
     if (!file.type.startsWith('image/')) {
-      alert('Harap pilih file gambar (JPG, PNG, GIF, dll.)');
+      toast.warning('Harap pilih file gambar (JPG, PNG, GIF, dll.)');
       return;
     }
 
     // Check file size (max 5MB)
     const maxSize = 5 * 1024 * 1024; // 5MB in bytes
     if (file.size > maxSize) {
-      alert('Ukuran file terlalu besar. Maksimal 5MB.');
+      toast.warning('Ukuran file terlalu besar. Maksimal 5MB.');
       return;
     }
 
@@ -345,31 +313,31 @@ export default function ConfigurePage() {
       if (base64String && typeof base64String === 'string') {
         try {
           localStorage.setItem('imageBackground', base64String);
-          alert('Gambar berhasil disimpan!');
+          toast.success('Gambar berhasil disimpan!');
         } catch (error) {
           if (error.name === 'QuotaExceededError') {
-            alert('Penyimpanan penuh. Gambar terlalu besar atau storage penuh.');
+            toast.error('Penyimpanan penuh. Gambar terlalu besar atau storage penuh.');
           } else {
-            alert('Gagal menyimpan gambar: ' + error.message);
+            toast.error('Gagal menyimpan gambar: ' + error.message);
           }
           console.error('Error saving image to localStorage:', error);
         }
       }
     };
     reader.onerror = () => {
-      alert('Gagal membaca file gambar');
+      toast.error('Gagal membaca file gambar');
     };
     reader.readAsDataURL(file);
-  }, []);
+  }, [toast]);
 
   // Remove background image from localStorage
   const handleRemoveImage = useCallback(() => {
     const confirm = window.confirm('Apakah Anda yakin ingin menghapus gambar latar belakang?');
     if (confirm) {
       localStorage.removeItem('imageBackground');
-      alert('Gambar latar belakang berhasil dihapus!');
+      toast.success('Gambar latar belakang berhasil dihapus!');
     }
-  }, []);
+  }, [toast]);
 
   // Fill dummy data for label positions
   const fillDummyLabelPositions = useCallback(() => {
@@ -437,7 +405,6 @@ export default function ConfigurePage() {
         label_position: formData.labelPosition || "top-left",
         individual_positions: formData.individualPositions || {},
         connector_start_positions: formData.connectorStartPositions || {},
-        wave_legend_position: formData.waveLegendPosition || { x: null, y: null },
       },
     };
   }, [formData]);
@@ -449,24 +416,24 @@ export default function ConfigurePage() {
     console.log("Konfigurasi:", configObject);
     if (navigator?.clipboard?.writeText) {
       navigator.clipboard.writeText(configJson).then(
-        () => alert("Konfigurasi disalin ke clipboard!"),
-        () => alert("Gagal menyalin ke clipboard, tetapi data ada di console.")
+        () => toast.success("Konfigurasi disalin ke clipboard!"),
+        () => toast.warning("Gagal menyalin ke clipboard, tetapi data ada di console.")
       );
     } else {
-      alert("Konfigurasi ditampilkan di console log.");
+      toast.info("Konfigurasi ditampilkan di console log.");
     }
   };
 
   // Save configuration to API (POST or PUT)
   const handleSaveToAPI = async () => {
     if (!configObject.id) {
-      alert("ID Konfigurasi harus diisi!");
+      toast.error("ID Konfigurasi harus diisi!");
       return;
     }
 
     // Block saving if ID validation failed
     if (!idValidation.isValid) {
-      alert("ID Konfigurasi tidak valid. " + idValidation.message);
+      toast.error("ID Konfigurasi tidak valid. " + idValidation.message);
       return;
     }
 
@@ -477,7 +444,7 @@ export default function ConfigurePage() {
       
       if (checkData.success) {
         // ID exists - block saving
-        alert(`ID "${configObject.id}" sudah digunakan. Silakan pilih ID lain.`);
+        toast.warning(`ID "${configObject.id}" sudah digunakan. Silakan pilih ID lain.`);
         return;
       }
       
@@ -500,23 +467,25 @@ export default function ConfigurePage() {
         } catch (storageError) {
           console.warn('Failed to save config ID to localStorage:', storageError);
         }
-        alert('Konfigurasi berhasil disimpan!');
+        toast.success('Konfigurasi berhasil disimpan!');
         
-        // Redirect to perairan3 page
-        router.push('/perairan3');
+        // Redirect to perairan3 page after a short delay to show the toast
+        setTimeout(() => {
+          router.push('/perairan3');
+        }, 1500);
       } else {
-        alert(`Gagal menyimpan: ${result.error}`);
+        toast.error(`Gagal menyimpan: ${result.error}`);
       }
     } catch (error) {
       console.error('Error saving configuration:', error);
-      alert('Terjadi kesalahan saat menyimpan konfigurasi');
+      toast.error('Terjadi kesalahan saat menyimpan konfigurasi');
     }
   };
 
   // Update existing configuration using PUT
   const handleUpdateToAPI = async () => {
     if (!configObject.id) {
-      alert("ID Konfigurasi harus diisi!");
+      toast.error("ID Konfigurasi harus diisi!");
       return;
     }
 
@@ -527,7 +496,7 @@ export default function ConfigurePage() {
       
       if (!checkData.success) {
         // ID doesn't exist - can't update
-        alert(`ID "${configObject.id}" tidak ditemukan. Gunakan "Simpan ke Server" untuk membuat konfigurasi baru.`);
+        toast.warning(`ID "${configObject.id}" tidak ditemukan. Gunakan "Simpan ke Server" untuk membuat konfigurasi baru.`);
         return;
       }
       
@@ -549,13 +518,13 @@ export default function ConfigurePage() {
       const result = await response.json();
     
       if (result.success) {
-        alert('Konfigurasi berhasil diperbarui!');
+        toast.success('Konfigurasi berhasil diperbarui!');
       } else {
-        alert(`Gagal memperbarui: ${result.error}`);
+        toast.error(`Gagal memperbarui: ${result.error}`);
       }
     } catch (error) {
       console.error('Error updating configuration:', error);
-      alert('Terjadi kesalahan saat memperbarui konfigurasi');
+      toast.error('Terjadi kesalahan saat memperbarui konfigurasi');
     }
   };
 
@@ -587,15 +556,14 @@ export default function ConfigurePage() {
           connectorStartPositions: config.perairan_settings?.connector_start_positions || {},
           legendPosition: config.perairan_settings?.legend_position || { bottom: 8, right: 8 },
           legendSize: config.perairan_settings?.legend_size || { width: "auto", height: "auto" },
-          waveLegendPosition: config.perairan_settings?.wave_legend_position || { x: null, y: null },
         });
-        alert("Konfigurasi berhasil dimuat!");
+        toast.success("Konfigurasi berhasil dimuat!");
       } else {
-        alert(`Konfigurasi tidak ditemukan: ${result.error}`);
+        toast.error(`Konfigurasi tidak ditemukan: ${result.error}`);
       }
     } catch (error) {
       console.error('Error loading configuration:', error);
-      alert('Terjadi kesalahan saat memuat konfigurasi');
+      toast.error('Terjadi kesalahan saat memuat konfigurasi');
     }
   };
 
@@ -611,12 +579,13 @@ export default function ConfigurePage() {
       if (result.success) {
         setSavedConfigs(result.data);
         setShowConfigList(true);
+        toast.success('Daftar konfigurasi berhasil dimuat!');
       } else {
-        alert(`Gagal memuat daftar konfigurasi: ${result.error}`);
+        toast.error(`Gagal memuat daftar konfigurasi: ${result.error}`);
       }
     } catch (error) {
       console.error('Error loading configurations:', error);
-      alert('Terjadi kesalahan saat memuat daftar konfigurasi');
+      toast.error('Terjadi kesalahan saat memuat daftar konfigurasi');
     }
   };
 
@@ -638,10 +607,9 @@ export default function ConfigurePage() {
       connectorStartPositions: config.perairan_settings?.connector_start_positions || {},
       legendPosition: config.perairan_settings?.legend_position || { bottom: 8, right: 8 },
       legendSize: config.perairan_settings?.legend_size || { width: "auto", height: "auto" },
-      waveLegendPosition: config.perairan_settings?.wave_legend_position || { x: null, y: null },
     });
     setShowConfigList(false);
-    alert(`Konfigurasi "${config.displayTitle || config.id}" berhasil dimuat!`);
+    toast.success(`Konfigurasi "${config.displayTitle || config.id}" berhasil dimuat!`);
   };
 
   const handleDownload = () => {
@@ -707,6 +675,7 @@ export default function ConfigurePage() {
           <Clock theme={theme} isDarkMode={isDarkMode}/>
           <RunningText theme={theme} />
         </div>
+        <ToastContainer toasts={toasts} onRemove={removeToast} />
       </>
     );
   }
@@ -723,12 +692,23 @@ export default function ConfigurePage() {
                 <ArrowLeft className="w-5 h-5" />
                 Kembali
               </button>
+              <button 
+                type="button" 
+                onClick={handleLoadFromAPI}
+                title="Memanggil ID yang pernah disimpan dan melakukan perubahan"
+                className="px-4 py-2 rounded-lg bg-gradient-to-r from-cyan-600 to-cyan-700 hover:from-cyan-700 hover:to-cyan-800 text-white font-medium transition-all duration-300 flex items-center gap-2 border border-cyan-500/30"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM6.293 6.707a1 1 0 010-1.414l3-3a1 1 0 011.414 0l3 3a1 1 0 01-1.414 1.414L11 5.414V13a1 1 0 11-2 0V5.414L7.707 6.707a1 1 0 01-1.414 0z" clipRule="evenodd" />
+                </svg>
+                Load ID
+              </button>
             </div>
             <h1 className="text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-cyan-300">
                 Pengaturan Tampilan
             </h1>
             <p className="text-gray-400 mt-2">
-                Atur informasi utama yang akan ditampilkan pada layar monitor Anda. Gunakan tab untuk navigasi yang mudah.
+                Atur informasi yang akan ditampilkan pada display cuaca.
             </p>
         </header>
 
@@ -956,7 +936,7 @@ export default function ConfigurePage() {
           {/* ID and Kota */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label htmlFor="id" className="block text-sm font-medium text-gray-300 mb-2">ID Konfigurasi (Simpan ID untuk login) </label>
+              <label htmlFor="id" className="block text-sm font-medium text-gray-300 mb-2">ID Konfigurasi </label>
               <div className="relative">
                 <input
                   type="text"
@@ -1004,7 +984,10 @@ export default function ConfigurePage() {
                 </p>
               )}
               {!formData.id && (
-                <p className="text-xs text-white mt-1">Hanya huruf dan angka, tanpa spasi atau karakter khusus. ID akan terdaftar ke Server dan localStorage dengan key <code className="bg-red-700 px-1 rounded">displayConfigId</code></p>
+                <div className="pl-4">
+                  <li className="text-xs text-white mt-1">Hanya huruf dan angka, tanpa spasi atau karakter khusus. ID akan terdaftar ke Server dan localStorage dengan key <code className="bg-red-700 px-1 rounded">displayConfigId</code></li>
+                  <li className="text-xs text-white mt-1"><code className="bg-red-700 px-1 rounded animate-pulse">Harap ID disimpan</code> agar tidak perlu melakukan konfigurasi berulang</li>
+                </div>
               )}
             </div>
             <div>
@@ -1027,65 +1010,6 @@ export default function ConfigurePage() {
             {/* Wilayah Perairan Tab */}
             {activeTab === 'wilayah' && (
               <div className="space-y-6">
-                <div className="bg-gradient-to-r from-purple-900/20 to-pink-900/20 border border-purple-500/30 rounded-lg p-6">
-                  <h3 className="text-lg font-semibold text-purple-300 mb-4 flex items-center gap-2">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" viewBox="0 0 20 20" fill="currentColor">
-                      <path fillRule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" />
-                    </svg>
-                    Pengaturan Peta
-                  </h3>
-
-          {/* Map Settings: View Point and Zoom */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">Titik Tengah - Latitude</label>
-              <input
-                type="number"
-                step="any"
-                name="viewPointLat"
-                value={formData.viewPointLat}
-                onChange={handleInputChange}
-                className="w-full bg-gray-700 border border-gray-600 rounded-lg p-3 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-300 opacity-60 cursor-not-allowed"
-                placeholder="Geser peta di bawah untuk mendapatkan nilai"
-                disabled
-                readOnly
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">Titik Tengah - Longitude</label>
-              <input
-                type="number"
-                step="any"
-                name="viewPointLng"
-                value={formData.viewPointLng}
-                onChange={handleInputChange}
-                className="w-full bg-gray-700 border border-gray-600 rounded-lg p-3 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-300 opacity-60 cursor-not-allowed"
-                placeholder="Geser peta di bawah untuk mendapatkan nilai"
-                disabled
-                readOnly
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">Initial Zoom</label>
-              <input
-                type="number"
-                min="1"
-                max="18"
-                name="initialZoom"
-                value={formData.initialZoom}
-                onChange={handleInputChange}
-                className="w-full bg-gray-700 border border-gray-600 rounded-lg p-3 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-300 cursor-not-allowed opacity-60"
-                placeholder="Contoh: 8"
-                disabled
-                readOnly
-              />
-            </div>
-          </div>
-                  <p className="text-xs text-gray-400 mt-2">
-                    <strong>Tip:</strong> Atur view point dan zoom menggunakan peta interaktif di bawah, atau masukkan nilai secara manual di form ini.
-                  </p>
-                </div>
-
                 <div className="bg-gradient-to-r from-cyan-900/20 to-blue-900/20 border border-cyan-500/30 rounded-lg p-6">
                   <h3 className="text-lg font-semibold text-cyan-300 mb-4 flex items-center gap-2">
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" viewBox="0 0 20 20" fill="currentColor">
@@ -1093,11 +1017,11 @@ export default function ConfigurePage() {
                     </svg>
                     Pilih Wilayah Perairan
                   </h3>
-                  <p className="text-sm text-gray-300 mb-4">
+                  <p className="text-sm text-white mb-4">
                     Klik pada polygon wilayah di peta untuk memilih wilayah perairan yang akan ditampilkan. 
                   </p>
-                  <p className="text-base text-gray-300 mb-4">
-                    Ukuran tampilan peta saat ini <i>adalah ukuran yang sama dengan tampilan akhir pada layar display.</i>
+                  <p className="text-base text-white mb-4">
+                    Ukuran tampilan peta saat ini <i>adalah <code className="bg-red-700 px-1 rounded animate-pulse">ukuran yang sama dengan tampilan akhir</code> pada layar display.</i>
                   </p>
 
 
@@ -1105,9 +1029,6 @@ export default function ConfigurePage() {
           <div>
             <div 
               className="relative w-[1720px] h-[878px] rounded-md overflow-hidden mx-auto border-2 border-cyan-500/30"
-              onMouseMove={handleWaveLegendMouseMove}
-              onMouseUp={handleWaveLegendMouseUp}
-              onMouseLeave={handleWaveLegendMouseUp}
             >
               <CoordinatePicker
                 className="absolute inset-0"
@@ -1133,20 +1054,11 @@ export default function ConfigurePage() {
               
               {/* Wave Legend */}
               <div 
-                className="absolute z-[1000] w-64"
-                style={{
-                  left: waveLegendPosition.x !== null ? `${waveLegendPosition.x}px` : 'auto',
-                  top: waveLegendPosition.y !== null ? `${waveLegendPosition.y}px` : 'auto',
-                  right: waveLegendPosition.x === null ? '1rem' : 'auto',
-                  bottom: waveLegendPosition.y === null ? '1rem' : 'auto',
-                  cursor: isDraggingWaveLegend ? 'grabbing' : 'grab'
-                }}
-                onMouseDown={handleWaveLegendMouseDown}
+                className="absolute z-[1000] w-64 right-4 bottom-4"
               >
-                <div className={`relative bg-white/80 backdrop-blur rounded-md p-3 shadow border ${isDraggingWaveLegend ? 'border-blue-400 ring-2 ring-blue-300' : 'border-white/30'} transition-all h-full flex flex-col`}>
+                <div className="relative bg-white/80 backdrop-blur rounded-md p-3 shadow border border-white/30 transition-all h-full flex flex-col">
                   <div className={`text-base font-semibold mb-2 ${theme.text.primary} flex items-center justify-between shrink-0`}>
                     <span>Legenda Gelombang</span>
-                    {isDraggingWaveLegend && <span className="text-xl">📍</span>}
                   </div>
                   <ul className="space-y-2 overflow-y-auto flex-1">
                     {Object.entries(KATEGORI_GELOMBANG).filter(([k]) => k !== 'unknown').map(([category, { color, range }]) => (
@@ -1194,51 +1106,10 @@ export default function ConfigurePage() {
                     Pengaturan Tampilan Perairan
                   </h3>
                   <p className="text-sm text-gray-400 mb-4">
-                    Atur posisi label, konektor, dan legenda pada tampilan peta perairan.
+                    Atur posisi label dan Titik garis.
                   </p>
 
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    {/* Wave Legend Position Info */}
-                    <div className="bg-gray-800/30 rounded-lg p-4 border border-gray-700/50">
-                      <div className="flex items-center justify-between mb-2">
-                        <label className="block text-sm font-medium text-gray-300">Posisi Legenda Gelombang</label>
-                        {formData.waveLegendPosition?.x !== null && (
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setFormData(prev => ({
-                                ...prev,
-                                waveLegendPosition: { x: null, y: null }
-                              }));
-                              setWaveLegendPosition({ x: null, y: null });
-                            }}
-                            className="px-2 py-1 text-xs bg-red-600 hover:bg-red-700 text-white rounded transition-colors"
-                          >
-                            Reset
-                          </button>
-                        )}
-                      </div>
-                      {formData.waveLegendPosition?.x !== null && formData.waveLegendPosition?.x !== undefined ? (
-                        <div className="space-y-2">
-                          <div className="text-xs text-gray-300">
-                            <span className="font-medium">X:</span> {Math.round(formData.waveLegendPosition?.x ?? 0)}px
-                          </div>
-                          <div className="text-xs text-gray-300">
-                            <span className="font-medium">Y:</span> {Math.round(formData.waveLegendPosition?.y ?? 0)}px
-                          </div>
-                          <p className="text-xs text-green-400 mt-2">
-                            ✓ Posisi custom tersimpan
-                          </p>
-                        </div>
-                      ) : (
-                        <div className="text-xs text-gray-400">
-                          <p>Posisi default: Kanan bawah</p>
-                          <p className="mt-2 text-yellow-400">
-                            💡 Seret legenda di peta untuk mengatur posisi custom
-                          </p>
-                        </div>
-                      )}
-                    </div>
                       <h2 className="lg:col-span-2 text-md font-semibold text-gray-300 mb-2 mt-4 lg:mt-0">Mengatur Posisi Label dan garis penghubung</h2>
                     {/* Individual Label Positions & Connector Positions Side by Side */}
                     <div className="lg:col-span-2 grid grid-cols-1 lg:grid-cols-2 gap-4">
@@ -1496,9 +1367,9 @@ export default function ConfigurePage() {
               <div className="space-y-6">
                 <div className="bg-gradient-to-r from-indigo-900/20 to-purple-900/20 border border-indigo-500/30 rounded-lg p-6">
                   <h3 className="text-lg font-semibold text-indigo-300 mb-4 flex items-center gap-2">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" viewBox="0 0 20 20" fill="currentColor">
-                      <path d="M3 1a1 1 0 000 2h1.22l.305 1.222a.997.997 0 00.01.042l1.358 5.43-.893.892C3.74 11.846 4.632 14 6.414 14H15a1 1 0 000-2H6.414l1-1H14a1 1 0 00.894-.553l3-6A1 1 0 0017 3H6.28l-.31-1.243A1 1 0 005 1H3zM16 16.5a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0zM6.5 18a1.5 1.5 0 100-3 1.5 1.5 0 000 3z" />
-                    </svg>
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 408.66 256.38" fill="currentColor">
+                    <path d="M408.66,147.14l-53.36,113.92c-1.77,3.18-3.73,5.83-7.3,7.07H27.77c-13.82-7.51-3.3-19.59.97-29.43,2.38-5.48,5.2-8.45,1.65-13.91-5.23-8.04-11.99-14.6-17.1-23.62-4.57-8.07-14.89-30.28-13.08-38.91.7-3.34,4.6-7.94,8.03-7.94h13.17v-34.73c-2.69-1.84-6.89-1.9-7.77-5.78-.66-2.9-.6-18.3.39-20.76s5.19-4.99,7.78-4.99h17.17v-45.91c0-2.26,5.28-6.79,7.59-6.79h26.75V6.22c0-5.07,6.42-8.22,10.36-4.77.58.5,2.41,4.32,2.41,4.77v29.14h26.75c2.58,0,7.59,4.91,7.59,7.59v45.11h17.17c2.59,0,6.76,2.45,7.78,4.99s1.06,17.96.25,20.6c-1.11,3.6-4.84,4.36-7.63,5.94v34.73h19.16V54.13c0-2.47,7.5-5.78,9.95-5.22,32.04,2.1,67.43-2.7,99.06,0,3.06.26,7.4.92,9.06,3.72.29.49,1.69,4.45,1.69,4.7v44.31h45.11c2.16,0,8.38,5.64,8.38,7.59v37.13l2.85-5.54c3.07-3.82,6.85-6.67,11.92-7.24,16.81-1.89,37.06,1.37,54.24.05,4.81,1.07,7.36,4.48,9.23,8.73v4.79ZM108.44,47.34h-57.49v40.72h57.49v-40.72ZM210.64,60.91h-41.52v40.72h41.52v-40.72ZM264.94,101.63v-39.52l-1.2-1.2h-41.12v40.72h42.32ZM133.99,100.84H25.41v6.39h14.77c.88,0,2.88,2.07,3.24,3.14,2.45,7.29-4.02,9.46-10.03,8.84v35.13h92.62v-35.13h-60.28c-.23,0-3.59-1.98-3.97-2.42-2.41-2.83-.9-9.56,2.37-9.56h69.86v-6.39ZM210.64,113.61h-41.52v40.72h41.52v-40.72ZM264.94,154.33v-39.52l-1.2-1.2h-41.12v40.72h42.32ZM318.43,113.61h-41.52v40.72h41.52v-40.72ZM395.88,145.55h-49.9c-3.73,0-3.67,7.97-4.63,10.54-1.39,3.73-8.21,10.22-12.14,10.22H12.63c3.79,21.14,16.56,38.93,30.07,54.96l231.46.09c8.92,2.95,4.53,12.72-4,12.04l-225.86-.06-10.91,23.19h310.19l10.78-23.15h-53.1c-.23,0-3.8-1.53-4.17-1.83-3.55-2.94-1.83-8.96,2.59-10.13l60.94-.15,35.26-75.72Z"/>
+                  </svg>
                     Pilih Pelabuhan
                   </h3>
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
@@ -1512,7 +1383,7 @@ export default function ConfigurePage() {
                     </div>
                   </div>
                   <p className="text-sm text-gray-300 mb-4">
-                    Klik marker pelabuhan pada peta untuk memilih. Gunakan tombol pada badge untuk memindahkan pelabuhan antar kategori.
+                    Klik titik pada peta untuk memilih pelabuhan.
                   </p>
 
           {/* Map 3: Port IDs Selection */}
@@ -1540,7 +1411,7 @@ export default function ConfigurePage() {
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                     <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-8.707l-3-3a1 1 0 00-1.414 1.414L10.586 9H7a1 1 0 100 2h3.586l-1.293 1.293a1 1 0 101.414 1.414l3-3a1 1 0 000-1.414z" clipRule="evenodd" />
                   </svg>
-                  Pelabuhan Utama ({formData.portIds.length})
+                  Pelabuhan Utama ({formData.portIds.length}) <span className="text-xs text-gray-400">Maksimal 6 Pelabuhan Utama</span>
                 </h3>
                 <div className="flex flex-wrap gap-2">
                   {formData.portIds.map((portId) => (
@@ -1679,10 +1550,11 @@ export default function ConfigurePage() {
                       <h4 className="text-sm font-semibold text-purple-300 mb-2">Informasi</h4>
                       <ul className="text-xs text-gray-300 space-y-1 list-disc list-inside">
                         <h2 className="font-bold text-sm">Pengaturan latar belakang hanya akan berhasil jika proses pembuatan ID dilakukan di PC display</h2>
-                        <li>Gambar akan disimpan di local storage browser dengan nama <code className="bg-gray-700 px-1 rounded">imageBackground</code></li>
+                        <li>Gambar akan disimpan di local storage browser dengan key <code className="bg-gray-700 px-1 rounded">imageBackground</code></li>
                         <li>Format yang didukung: JPG, PNG, GIF, WebP, dll.</li>
                         <li>Ukuran maksimal: 5 MB</li>
-                        <li>Gambar akan tetap tersimpan hingga dihapus secara manual</li>
+                        <li>Gambar akan tetap tersimpan hingga dilakukan penghapusan browser data</li>
+                        <li>Untuk mengganti latar belakang, cukup unggah gambar baru di halaman ini</li>
                       </ul>
                     </div>
 
@@ -1831,9 +1703,7 @@ export default function ConfigurePage() {
         </section>
 
         {/* Action Buttons */}
-        <section className="mt-8">
-          <h2 className="text-lg font-semibold mb-4 text-gray-300">Aksi</h2>
-          
+        <section className="mt-8 w-1/2 flex justify-center flex-col mx-auto">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {/* Preview */}
             <button 
@@ -1851,21 +1721,6 @@ export default function ConfigurePage() {
               </div>
             </button>
 
-            {/* Download */}
-            <button 
-              type="button" 
-              onClick={handleDownload} 
-              className="px-6 py-4 rounded-xl bg-gradient-to-r from-gray-600 to-gray-700 hover:from-gray-700 hover:to-gray-800 text-white font-medium shadow-lg hover:shadow-xl transition-all duration-300 flex items-center gap-3"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" viewBox="0 0 20 20" fill="currentColor">
-                <path fillRule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clipRule="evenodd" />
-              </svg>
-              <div className="text-left">
-                <div>Unduh JSON</div>
-                <div className="text-xs opacity-80">Simpan ke komputer</div>
-              </div>
-            </button>
-
             {/* Save to Server */}
             <button 
               type="button" 
@@ -1877,7 +1732,7 @@ export default function ConfigurePage() {
               </svg>
               <div className="text-left">
                 <div>Simpan ke Server</div>
-                <div className="text-xs opacity-80">Upload konfigurasi</div>
+                <div className="text-xs opacity-80">Menambahkan Konfigurasi</div>
               </div>
             </button>
 
@@ -1893,22 +1748,7 @@ export default function ConfigurePage() {
               </svg>
               <div className="text-left">
                 <div>Perbarui Data</div>
-                <div className="text-xs opacity-80">Update konfigurasi</div>
-              </div>
-            </button>
-
-            {/* Load from Server */}
-            <button 
-              type="button" 
-              onClick={handleLoadFromAPI} 
-              className="px-6 py-4 rounded-xl bg-gradient-to-r from-cyan-600 to-cyan-700 hover:from-cyan-700 hover:to-cyan-800 text-white font-medium shadow-lg hover:shadow-xl transition-all duration-300 flex items-center gap-3"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" viewBox="0 0 20 20" fill="currentColor">
-                <path fillRule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM6.293 6.707a1 1 0 010-1.414l3-3a1 1 0 011.414 0l3 3a1 1 0 01-1.414 1.414L11 5.414V13a1 1 0 11-2 0V5.414L7.707 6.707a1 1 0 01-1.414 0z" clipRule="evenodd" />
-              </svg>
-              <div className="text-left">
-                <div>Muat dari Server</div>
-                <div className="text-xs opacity-80">Load konfigurasi</div>
+                <div className="text-xs opacity-80">Menyimpan perubahan konfigurasi</div>
               </div>
             </button>
 
@@ -1949,6 +1789,7 @@ export default function ConfigurePage() {
           </details>
         </section>
       </div>
+      <ToastContainer toasts={toasts} onRemove={removeToast} />
     </div>
   );
 }

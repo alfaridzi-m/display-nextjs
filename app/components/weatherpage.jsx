@@ -179,8 +179,8 @@ const WeatherPage = ({ theme, list }) => {
     return (
         <div key={activePortIndex} className="flex flex-col gap-6 card-container animate-page-fade-in">
             <div className={`${theme.glassCardClass} w-full p-4 text-3xl font-bold text-center text-sky-800`}><span className='font-medium text-gray-700'>Prakiraan Cuaca</span> {data.name}</div>
-            <div className="flex flex-col lg:flex-row gap-6">
-                <div className={`${theme.glassCardClass} p-6 flex flex-col justify-between card-item w-1/2 animate-card`} style={{ '--delay': '0.2s' }}>
+            <div className="flex flex-col lg:flex-row gap-6 ">
+                <div className={`${theme.glassCardClass} p-6 flex flex-col justify-between card-item w-1/2 animate-card backdrop-blur-sm`} style={{ '--delay': '0.2s' }}>
                 <p className={`text-2xl font-bold ${theme.nav.text}`}>Prakiraan Pukul {new Date(displayForecast.time).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', hour12: false }).replace('.', ':')}</p>
                     <div className='flex justify-around items-center'>
                         <div className="flex flex-col space-y-6 border-r border-gray-300 pr-6">
@@ -222,17 +222,17 @@ const WeatherPage = ({ theme, list }) => {
                         </div>
                     </div>
                 </div>
-            <div className={`${theme.glassCardClass} p-6 card-item lg:w-1/2 animate-card`} style={{ '--delay': '0.4s' }}>
+            <div className={`${theme.glassCardClass} p-6 card-item lg:w-1/2 animate-card backdrop-blur-sm`} style={{ '--delay': '0.4s' }}>
                 <TidesCard code={data.code} theme={theme} height={300} />
             </div>
-                <div className={`${theme.glassCardClass} p-6 card-item lg:w-1/3 flex flex-col animate-card`}style={{ '--delay': '0.6s' }}>
+                <div className={`${theme.glassCardClass} p-6 card-item lg:w-1/3 flex flex-col animate-card backdrop-blur-sm`}style={{ '--delay': '0.6s' }}>
                     <h3 className={`mb-2 text-2xl font-bold ${theme.nav.text}`}>Prakiraan 3 Hari Kedepan</h3>
                     <div className="space-y-1 flex-grow flex flex-col justify-around w-full">
                         {dailyData.slice(0, 5).map((item, index) => (<DailyForecastItem key={index} {...item} theme={theme}/>))}
                     </div>
                 </div>
             </div>
-            <div className={`${theme.glassCardClass} pt-6 pb-4 card-item animate-card`} style={{ '--delay': '0.8s' }}>
+            <div className={`${theme.glassCardClass} pt-6 pb-4 backdrop-blur-sm card-item animate-card`} style={{ '--delay': '0.8s' }}>
                 <h3 className={` text-2xl px-6 mb-4 font-bold ${theme.nav.text}`}>Prakiraan Cuaca Hari Ini</h3>
                 <div className="slider-container">
                     <div className="slider-track">
