@@ -60,7 +60,7 @@ export default function ConfigSelectPage() {
         localStorage.setItem('displayConfigId', selectedConfigId);
         
         // Redirect to home page
-        router.push('/perairan3');
+        router.push('/infomet');
       } else {
         setError('Configuration not found');
       }
