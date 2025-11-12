@@ -1,24 +1,64 @@
 'use client';
 import React, { useState, useEffect, useRef } from 'react';
-import { Sun, CloudFog, CloudSun, Cloud, Cloudy ,CloudDrizzle , CloudRain, CloudRainWind, CloudLightning, HelpCircle, Zap, Haze } from 'lucide-react';
-const WeatherIcon = ({ condition, size }) => {
+import dynamic from 'next/dynamic';
+
+// Dynamically import Lottie to avoid SSR issues
+const Lottie = dynamic(() => import('lottie-react'), { ssr: false });
+
+const WeatherIcon = ({ condition, size = 24 }) => {
+  const [animationData, setAnimationData] = useState(null);
+
+  // Map weather conditions to animation file paths
   const weatherIconMap = {
-    'Cerah': <Sun className={`w-${size} h-${size} text-yellow-400`} />,
-    'Cerah Berawan': <CloudSun className={`w-${size} h-${size} text-yellow-400`} />,
-    'Berawan': <Cloud className={`w-${size} h-${size} text-gray-400`} />,
-    'Berawan Tebal': <Cloudy className={`w-${size} h-${size} text-gray-500`} />,
-    'Udara Kabur': <Haze className={`w-${size} h-${size} text-gray-300`} />,
-    'Petir': <Zap className={`w-${size} h-${size} text-yellow-500`} />,
-    'Kabut': <CloudFog className={`w-${size} h-${size} text-gray-300`} />,
-    'Hujan Ringan': <CloudDrizzle className={`w-${size} h-${size} text-blue-400`} />,
-    'Hujan Sedang': <CloudRain className={`w-${size} h-${size} text-blue-500`} />,
-    'Hujan Lebat': <CloudRainWind className={`w-${size} h-${size} text-blue-600`} />,
-    'Hujan Petir': <CloudLightning className={`w-${size} h-${size} text-yellow-500`} />, // Lightning with rain fix icon
-    'default': <HelpCircle className={`w-${size} h-${size} text-yellow-500`} />
+    'Cerah': '/icon/cerah.json',
+    'Cerah Berawan': '/icon/cerah-berawan.json',
+    'Berawan': '/icon/berawan.json',
+    'Berawan Tebal': '/icon/berawan-tebal.json',
+    'Udara Kabur': '/icon/haze.json',
+    'Petir': '/icon/petir.json',
+    'Kabut': '/icon/kabut.json',
+    'Hujan Ringan': '/icon/hujan-ringan.json',
+    'Hujan Sedang': '/icon/hujan-sedang.json',
+    'Hujan Lebat': '/icon/hujan-lebat.json',
+    'Hujan Petir': '/icon/hujan-petir.json',
   };
 
-  const IconComponent = weatherIconMap[condition] || weatherIconMap['default'];
-  return React.cloneElement(IconComponent, { size });
+  useEffect(() => {
+    const iconPath = weatherIconMap[condition];
+    
+    if (iconPath) {
+      // Fetch the animation JSON file
+      fetch(iconPath)
+        .then(response => response.json())
+        .then(data => setAnimationData(data))
+        .catch(error => console.error('Error loading animation:', error));
+    }
+  }, [condition]);
+
+  // Calculate size in pixels (convert Tailwind size to pixels)
+  const sizeInPx = typeof size === 'number' ? size : parseInt(size) * 4;
+
+  if (!animationData) {
+    return (
+      <div 
+        style={{ width: `${sizeInPx}px`, height: `${sizeInPx}px` }}
+        className="flex items-center justify-center"
+      >
+        <div className="animate-pulse bg-gray-200 rounded-full w-full h-full" />
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ width: `${sizeInPx}px`, height: `${sizeInPx}px` }}>
+      <Lottie
+        animationData={animationData}
+        loop={true}
+        autoplay={true}
+        style={{ width: '100%', height: '100%' }}
+      />
+    </div>
+  );
 };
 
 export default WeatherIcon;
