@@ -38,16 +38,16 @@ const WeatherIcon = ({ condition, size = 24 }) => {
   // Calculate size in pixels (convert Tailwind size to pixels)
   const sizeInPx = typeof size === 'number' ? size : parseInt(size) * 4;
 
-  if (!animationData) {
-    return (
-      <div 
-        style={{ width: `${sizeInPx}px`, height: `${sizeInPx}px` }}
-        className="flex items-center justify-center"
-      >
-        <div className="animate-pulse bg-gray-200 rounded-full w-full h-full" />
-      </div>
-    );
-  }
+  // if (!animationData) {
+  //   return (
+  //     <div 
+  //       style={{ width: `${sizeInPx}px`, height: `${sizeInPx}px` }}
+  //       className="flex items-center justify-center"
+  //     >
+  //       <div className="animate-pulse bg-gray-200 rounded-full w-full h-full" />
+  //     </div>
+  //   );
+  // }
 
   return (
     <div style={{ width: `${sizeInPx}px`, height: `${sizeInPx}px` }}>
