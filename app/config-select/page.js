@@ -10,6 +10,7 @@ export default function ConfigSelectPage() {
   const [selectedConfigId, setSelectedConfigId] = useState('');
   const [loading, setLoading] = useState(true);
   const [loadingConfig, setLoadingConfig] = useState(false);
+  const [loadingCreate, setLoadingCreate] = useState(false);
   const [error, setError] = useState('');
 
   useEffect(() => {
@@ -38,6 +39,7 @@ export default function ConfigSelectPage() {
 
   const handleCreateConfiguration = () => {
     // Navigate to configure page to create new configuration
+    setLoadingCreate(true);
     router.push('/configure');
   };
 
@@ -101,10 +103,20 @@ export default function ConfigSelectPage() {
               </p>
               <button
                 onClick={handleCreateConfiguration}
-                className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-4 px-6 rounded-xl transition-all duration-300 flex items-center justify-center gap-2 shadow-lg hover:shadow-xl"
+                disabled={loadingCreate}
+                className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white font-semibold py-4 px-6 rounded-xl transition-all duration-300 flex items-center justify-center gap-2 shadow-lg hover:shadow-xl"
               >
-                Buat Konfigurasi Baru
-                <ArrowRight className="w-5 h-5" />
+                {loadingCreate ? (
+                  <>
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                    Memuat...
+                  </>
+                ) : (
+                  <>
+                    Buat/perbaharui konfigurasi
+                    <ArrowRight className="w-5 h-5" />
+                  </>
+                )}
               </button>
             </div>
           </div>
@@ -163,13 +175,6 @@ export default function ConfigSelectPage() {
               </button>
             </div>
           </div>
-        </div>
-
-        {/* Additional info */}
-        <div className="mt-8 text-center">
-          <p className="text-blue-300 text-sm">
-            Konfigurasi yang dimuat akan disimpan di browser ini
-          </p>
         </div>
       </div>
     </div>

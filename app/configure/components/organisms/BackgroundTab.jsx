@@ -28,7 +28,7 @@ export const BackgroundTab = ({
               <li>Format yang didukung: JPG, PNG, GIF, WebP, dll.</li>
               <li>Ukuran maksimal: 5 MB</li>
               <li>Gambar akan tetap tersimpan hingga dilakukan penghapusan browser data</li>
-              <li>Untuk mengganti latar belakang, cukup unggah gambar baru di halaman ini</li>
+              <li>Untuk mengganti atau menambahkan latar belakang, cukup unggah gambar baru di halaman ini</li>
             </ul>
           </div>
 

@@ -183,7 +183,11 @@ const WeatherPage = ({ theme, list }) => {
                 <div className={`${theme.glassCardClass} p-6 flex flex-col justify-between card-item w-1/2 animate-card backdrop-blur-sm`} style={{ '--delay': '0.2s' }}>
                 <p className={`text-2xl font-bold ${theme.nav.text}`}>Prakiraan Pukul {new Date(displayForecast.time).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', hour12: false }).replace('.', ':')}</p>
                     <div className='flex justify-around items-center'>
-                        <div className="flex flex-col space-y-6 border-r border-gray-300 pr-6">
+                        <div className="w-1/6 flex flex-col items-center justify-center align-middle">
+                            <WeatherIcon condition={displayForecast.weather} size={90}/>
+                            <p className={`text-2xl font-bold text-slate-800 text-center ${theme.text.primary}`}>{displayForecast.weather}</p>
+                        </div>
+                        <div className="flex flex-col space-y-6 border-l border-gray-300 pr-2">
                             <div className="grid grid-cols-3 gap-4">
                                 <InfoRow icon={Thermometer} label="Suhu" sub={"Udara"} value={`${displayForecast.temp_avg}°C`} big theme={theme}/>
                                 <InfoRow 
@@ -216,19 +220,15 @@ const WeatherPage = ({ theme, list }) => {
                                 <InfoRow icon={Activity} label="Pasang" value={`${displayForecast.tides} m`} sub="Perkiraan" theme={theme}/>
                             </div>
                         </div>
-                        <div className="w-1/6 flex flex-col items-center justify-center align-middle">
-                            <WeatherIcon condition={displayForecast.weather} size={90}/>
-                            <p className={`text-2xl font-bold text-slate-800 text-center ${theme.text.primary}`}>{displayForecast.weather}</p>
-                        </div>
                     </div>
                 </div>
             <div className={`${theme.glassCardClass} p-6 card-item lg:w-1/2 animate-card backdrop-blur-sm`} style={{ '--delay': '0.4s' }}>
                 <TidesCard code={data.code} theme={theme} height={300} />
             </div>
                 <div className={`${theme.glassCardClass} p-6 card-item lg:w-1/3 flex flex-col animate-card backdrop-blur-sm`}style={{ '--delay': '0.6s' }}>
-                    <h3 className={`mb-2 text-2xl font-bold ${theme.nav.text}`}>Prakiraan 3 Hari Kedepan</h3>
+                    <h3 className={`mb-2 text-2xl font-bold ${theme.nav.text}`}>Prakiraan 2 Hari Kedepan</h3>
                     <div className="space-y-1 flex-grow flex flex-col justify-around w-full">
-                        {dailyData.slice(0, 5).map((item, index) => (<DailyForecastItem key={index} {...item} theme={theme}/>))}
+                        {dailyData.slice(0, 2).map((item, index) => (<DailyForecastItem key={index} {...item} theme={theme}/>))}
                     </div>
                 </div>
             </div>

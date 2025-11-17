@@ -5,7 +5,7 @@ import dynamic from 'next/dynamic';
 // Dynamically import Lottie to avoid SSR issues
 const Lottie = dynamic(() => import('lottie-react'), { ssr: false });
 
-const WeatherIcon = ({ condition, size = 24 }) => {
+const WeatherIcon = ({ condition, size }) => {
   const [animationData, setAnimationData] = useState(null);
 
   // Map weather conditions to animation file paths

@@ -6,7 +6,8 @@ const HourlyForecastCard = ({theme ,time, icon, temp, windSpeed, windGust, waveH
         <p className="text-xl font-semibold border-b w-full text-center pb-2 border-gray-400">{time}</p>
         
         {/* Replace this with your <WeatherIcon condition={icon} ... /> */}
-        <WeatherIcon condition={icon} size={90} className="my-1" />
+        <WeatherIcon condition={icon} size={100} className="my-1" />
+        <p className="text-xl font-semibold text-center mb-2">{icon}</p>
         
         <div className={`grid grid-cols-2 gap-4 w-full text-center ${theme.border}`}>
             <div className={`flex flex-col items-center"`}>

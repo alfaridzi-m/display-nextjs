@@ -213,37 +213,39 @@ const PerairanPage = ({
                     ></lottie-player>
                 </div>
 
-                <!-- Row 2: Wave Height -->
-                <p class="text-[13px] font-semibold text-gray-700  w-full bg-gray-200 text-center rounded-sm">Gelombang</p>
-                
-                <!-- Row 2: Wave Height -->
-                <div class="flex items-center justify-center mb-1">
-                    <div class="text-lg font-bold" style="color: ${waveColor};">
-                        ${forecast.wave_height} m
-                    </div>
-                </div>
                 
                 <!-- Row 3: Teks wind -->
-                <p class="text-[14px] font-semibold text-gray-700 mb-1 w-full bg-gray-200 text-center rounded-sm">Angin</p>
+                <p class="text-[14px] font-semibold text-gray-700 mb-1 w-full text-center ">Angin</p>
                 
                 <!-- Row 4: Wind Direction and Speed -->
                 <div class="flex items-center justify-center gap-2 mb-1">
-                    <svg 
-                        width="20" 
-                        height="20" 
-                        viewBox="0 0 24 24" 
-                        fill="none" 
-                        stroke="currentColor" 
-                        stroke-width="2" 
-                        stroke-linecap="round" 
-                        stroke-linejoin="round"
-                        class="transition-transform duration-300"
-                        style="transform: rotate(${windAngle+180}deg);"
-                    >
-                        <polygon points="12 2 19 21 12 17 5 21 12 2"></polygon>
-                    </svg>
-                    <span class="text-[14px] font-semibold text-gray-700">${forecast.wind_speed}kt</span>
+                <svg 
+                width="20" 
+                height="20" 
+                viewBox="0 0 24 24" 
+                fill="none" 
+                stroke="currentColor" 
+                stroke-width="2" 
+                stroke-linecap="round" 
+                stroke-linejoin="round"
+                class="transition-transform duration-300"
+                style="transform: rotate(${windAngle+180}deg);"
+                >
+                <polygon points="12 2 19 21 12 17 5 21 12 2"></polygon>
+                </svg>
+                <span class="text-[14px] font-semibold text-gray-700">${forecast.wind_speed} kt</span>
                 </div>
+                <!-- Row 2: Wave Height -->
+                <p class="text-[13px] font-semibold text-gray-700  w-full text-center border-t-2 border-gray-300">Gelombang</p>
+                
+                <!-- Row 2: Wave Height -->
+                <div class="flex items-center justify-center">
+                    <div class="text-lg font-bold">
+                        ${forecast.wave_height} m
+                    </div>
+                </div>
+
+                <p class="text-[13px] font-semibold text-white w-full text-center rounded-sm mb-1" style="background-color: ${waveColor};">${forecast.wave_cat}</p>
             </div>
         `;
     }, []);

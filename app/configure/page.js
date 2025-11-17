@@ -66,6 +66,9 @@ export default function ConfigurePage() {
   const [enableConnectorConfig, setEnableConnectorConfig] = useState(false);
   const [savedConfigs, setSavedConfigs] = useState([]);
   const [showConfigList, setShowConfigList] = useState(false);
+  const [showLoadModal, setShowLoadModal] = useState(false);
+  const [loadConfigId, setLoadConfigId] = useState("");
+  const [isLoadingConfig, setIsLoadingConfig] = useState(false);
 
   const theme = isDarkMode ? darkTheme : lightTheme;
   const pages = ['weather', 'cities', 'Perairan', 'Peta'];
@@ -174,11 +177,14 @@ export default function ConfigurePage() {
   };
 
   const handleLoadFromAPI = async () => {
-    const configId = prompt("Masukkan ID Konfigurasi yang ingin dimuat:");
-    if (!configId) return;
+    if (!loadConfigId.trim()) {
+      toast.error("ID Konfigurasi tidak boleh kosong!");
+      return;
+    }
 
+    setIsLoadingConfig(true);
     try {
-      const response = await fetch(`/api/configure?id=${configId}`);
+      const response = await fetch(`/api/configure?id=${loadConfigId.trim()}`);
       const result = await response.json();
 
       if (result.success && result.data) {
@@ -201,6 +207,8 @@ export default function ConfigurePage() {
           legendPosition: config.perairan_settings?.legend_position || { bottom: 8, right: 8 },
           legendSize: config.perairan_settings?.legend_size || { width: "auto", height: "auto" },
         });
+        setShowLoadModal(false);
+        setLoadConfigId("");
         toast.success("Konfigurasi berhasil dimuat!");
       } else {
         toast.error(`Konfigurasi tidak ditemukan: ${result.error}`);
@@ -208,6 +216,8 @@ export default function ConfigurePage() {
     } catch (error) {
       console.error('Error loading configuration:', error);
       toast.error('Terjadi kesalahan saat memuat konfigurasi');
+    } finally {
+      setIsLoadingConfig(false);
     }
   };
 
@@ -322,7 +332,13 @@ export default function ConfigurePage() {
       <div className="max-w-[1900px] mx-auto">
         {/* Header */}
         <header className="mb-8">
-          <div className="flex items-center gap-4 mb-4">
+          <h1 className="text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-cyan-300">
+            Pengaturan Tampilan
+          </h1>
+          <p className="text-gray-400 mt-2">
+            Atur informasi yang akan ditampilkan pada display cuaca.
+          </p>
+          <div className="flex items-center gap-4 mt-4">
             <Button
               variant="secondary"
               onClick={() => router.push('/config-select')}
@@ -332,20 +348,78 @@ export default function ConfigurePage() {
             </Button>
             <Button
               variant="primary"
-              onClick={handleLoadFromAPI}
+              onClick={() => setShowLoadModal(true)}
               icon={<Icon name="upload" />}
               className="border border-cyan-500/30"
             >
               Load ID
             </Button>
           </div>
-          <h1 className="text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-cyan-300">
-            Pengaturan Tampilan
-          </h1>
-          <p className="text-gray-400 mt-2">
-            Atur informasi yang akan ditampilkan pada display cuaca.
-          </p>
         </header>
+
+        {/* Load Config Modal */}
+        {showLoadModal && (
+          <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+            <div className="bg-gray-800 rounded-2xl shadow-2xl border border-white/10 max-w-md w-full p-6">
+              <div className="flex justify-between items-center mb-6">
+                <h2 className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-cyan-300">
+                  Muat Konfigurasi
+                </h2>
+                <button
+                  onClick={() => {
+                    setShowLoadModal(false);
+                    setLoadConfigId("");
+                  }}
+                  className="text-gray-400 hover:text-white transition-colors"
+                >
+                  <Icon name="close" className="h-6 w-6" />
+                </button>
+              </div>
+              
+              <div className="space-y-4">
+                <div>
+                  <label htmlFor="loadConfigId" className="block text-sm font-medium text-gray-300 mb-2">
+                    ID Konfigurasi
+                  </label>
+                  <input
+                    type="text"
+                    id="loadConfigId"
+                    value={loadConfigId}
+                    onChange={(e) => setLoadConfigId(e.target.value)}
+                    onKeyPress={(e) => {
+                      if (e.key === 'Enter') {
+                        handleLoadFromAPI();
+                      }
+                    }}
+                    placeholder="Masukkan ID konfigurasi..."
+                    className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    autoFocus
+                  />
+                  <p className="text-xs text-gray-400 mt-2">
+                    Masukkan ID konfigurasi yang ingin dimuat dari server
+                  </p>
+                </div>
+
+                <div className="flex gap-3 pt-2 w-fit">
+                  <Button
+                    variant="primary"
+                    onClick={handleLoadFromAPI}
+                    icon={isLoadingConfig ? (
+                      <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                    ) : <Icon name="upload" />}
+                    className="flex-1"
+                    disabled={isLoadingConfig}
+                  >
+                    {isLoadingConfig ? "Memuat..." : "Muat"}
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Config List Modal */}
         {showConfigList && (

@@ -119,8 +119,8 @@ function DraggableLabels({ wilayahGeoJson, selectedWilayahAktif, individualPosit
           <div style="
             background: rgba(255, 255, 255, 0.95);
             backdrop-filter: blur(4px);
-            border-radius: 8px;
-            padding: 4px;
+            border-radius: 0.5rem;
+            padding: 0.25rem;
             font-size: 11px;
             font-weight: 600;
             color: #1f2937;
@@ -133,27 +133,17 @@ function DraggableLabels({ wilayahGeoJson, selectedWilayahAktif, individualPosit
             min-width: 100px;
           ">
             <!-- Row 1: Weather Icon -->
-            <div style="display: flex; align-items: center; justify-content: center; margin-bottom: 4px;">
-              <div style="font-size: 32px; line-height: 1;">
+            <div style="display: flex; align-items: center; justify-content: center; margin-bottom: 0.25rem;">
+              <div style="width: 60px; height: 60px; font-size: 32px; line-height: 1; display: flex; align-items: center; justify-content: center;">
                 ☀️
               </div>
             </div>
 
-            <!-- Row 2: Wave Label -->
-            <p style="font-size: 13px; font-weight: 600; color: #374151; margin: 0 0 4px 0; width: 100%; background-color: #e5e7eb; text-align: center; border-radius: 2px; padding: 2px 0;">Gelombang</p>
+            <!-- Row 2: Wind Label -->
+            <p style="font-size: 14px; font-weight: 600; color: #374151; margin: 0 0 0.25rem 0; width: 100%; text-align: center;">Angin</p>
             
-            <!-- Row 3: Wave Height -->
-            <div style="display: flex; align-items: center; justify-content: center; margin-bottom: 4px;">
-              <div style="font-size: 18px; font-weight: 700; color: #3b82f6;">
-                0.4 m
-              </div>
-            </div>
-            
-            <!-- Row 4: Wind Label -->
-            <p style="font-size: 14px; font-weight: 600; color: #374151; margin: 0 0 4px 0; width: 100%; background-color: #e5e7eb; text-align: center; border-radius: 2px; padding: 2px 0;">Angin</p>
-            
-            <!-- Row 5: Wind Direction and Speed -->
-            <div style="display: flex; align-items: center; justify-content: center; gap: 8px; margin-bottom: 4px;">
+            <!-- Row 3: Wind Direction and Speed -->
+            <div style="display: flex; align-items: center; justify-content: center; gap: 0.5rem; margin-bottom: 0.25rem;">
               <svg 
                 width="20" 
                 height="20" 
@@ -169,6 +159,19 @@ function DraggableLabels({ wilayahGeoJson, selectedWilayahAktif, individualPosit
               </svg>
               <span style="font-size: 14px; font-weight: 600; color: #374151;">5kt</span>
             </div>
+            
+            <!-- Row 4: Wave Label -->
+            <p style="font-size: 13px; font-weight: 600; color: #374151; margin: 0; width: 100%; text-align: center; border-top: 2px solid #d1d5db; padding-top: 0.25rem;">Gelombang</p>
+            
+            <!-- Row 5: Wave Height -->
+            <div style="display: flex; align-items: center; justify-content: center;">
+              <div style="font-size: 18px; font-weight: 700;">
+                0.4 m
+              </div>
+            </div>
+            
+            <!-- Row 6: Wave Category -->
+            <p style="font-size: 13px; font-weight: 600; color: white; margin: 0.25rem 0 0 0; width: 100%; background-color: #10b981; text-align: center; border-radius: 0.125rem;">Rendah</p>
           </div>
         `,
         iconSize: null,
