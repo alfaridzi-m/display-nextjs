@@ -120,27 +120,54 @@ function DraggableLabels({ wilayahGeoJson, selectedWilayahAktif, individualPosit
             background: rgba(255, 255, 255, 0.95);
             backdrop-filter: blur(4px);
             border-radius: 8px;
-            padding: 8px 10px;
+            padding: 4px;
             font-size: 11px;
             font-weight: 600;
             color: #1f2937;
-            text-align: center;
             border: 2px solid #3b82f6;
-            box-shadow: 0 2px 6px rgba(0,0,0,0.25);
-            white-space: nowrap;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
             cursor: move;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-width: 100px;
           ">
-            <div style="font-size: 20px; margin-bottom: 2px;">
-              ☀️
+            <!-- Row 1: Weather Icon -->
+            <div style="display: flex; align-items: center; justify-content: center; margin-bottom: 4px;">
+              <div style="font-size: 32px; line-height: 1;">
+                ☀️
+              </div>
             </div>
-            <div style="font-size: 16px; font-weight: 700; color: #3b82f6;">
-              0.4m
+
+            <!-- Row 2: Wave Label -->
+            <p style="font-size: 13px; font-weight: 600; color: #374151; margin: 0 0 4px 0; width: 100%; background-color: #e5e7eb; text-align: center; border-radius: 2px; padding: 2px 0;">Gelombang</p>
+            
+            <!-- Row 3: Wave Height -->
+            <div style="display: flex; align-items: center; justify-content: center; margin-bottom: 4px;">
+              <div style="font-size: 18px; font-weight: 700; color: #3b82f6;">
+                0.4 m
+              </div>
             </div>
-            <div style="font-size: 13px; font-weight: 600; color: #374151; margin-top: 3px;">
-              5kt
-            </div>
-            <div style="font-size: 10px; color: #6b7280; margin-top: 1px;">
-              Tenggara
+            
+            <!-- Row 4: Wind Label -->
+            <p style="font-size: 14px; font-weight: 600; color: #374151; margin: 0 0 4px 0; width: 100%; background-color: #e5e7eb; text-align: center; border-radius: 2px; padding: 2px 0;">Angin</p>
+            
+            <!-- Row 5: Wind Direction and Speed -->
+            <div style="display: flex; align-items: center; justify-content: center; gap: 8px; margin-bottom: 4px;">
+              <svg 
+                width="20" 
+                height="20" 
+                viewBox="0 0 24 24" 
+                fill="none" 
+                stroke="currentColor" 
+                stroke-width="2" 
+                stroke-linecap="round" 
+                stroke-linejoin="round"
+                style="transform: rotate(180deg); transition: transform 0.3s;"
+              >
+                <polygon points="12 2 19 21 12 17 5 21 12 2"></polygon>
+              </svg>
+              <span style="font-size: 14px; font-weight: 600; color: #374151;">5kt</span>
             </div>
           </div>
         `,

@@ -175,73 +175,74 @@ const PerairanPage = ({
 
     // Weather icon mapping - moved outside for reuse
     const weatherIcons = {
-        'Cerah': '☀️',
-        'Cerah Berawan': '🌤️',
-        'Berawan': '☁️',
-        'Berawan Tebal': '☁️',
-        'Hujan Ringan': '🌦️',
-        'Hujan Sedang': '🌧️',
-        'Hujan Lebat': '🌧️',
-        'Hujan Sangat Lebat': '⛈️',
-        'Hujan Ekstrem': '⛈️',
-        'Hujan Petir': '⛈️',
-        'Kabut/Asap': '🌫️',
-        'Udara Kabur': '🌫️',
-        'Kabut': '🌫️',
-        'Petir': '⚡',
-        'unknown': '❓'
+        'Cerah': '/icon/cerah.json',
+        'Cerah Berawan': '/icon/cerah-berawan.json',
+        'Berawan': '/icon/berawan.json',
+        'Berawan Tebal': '/icon/berawan-tebal.json',
+        'Hujan Ringan': '/icon/hujan-ringan.json',
+        'Hujan Sedang': '/icon/hujan-sedang.json',
+        'Hujan Lebat': '/icon/hujan-lebat.json',
+        'Hujan Sangat Lebat': '/icon/hujan-lebat.json',
+        'Hujan Ekstrem': '/icon/hujan-lebat.json',
+        'Hujan Petir': '/icon/hujan-petir.json',
+        'Kabut/Asap': '/icon/kabut.json',
+        'Udara Kabur': '/icon/haze.json',
+        'Kabut': '/icon/kabut.json',
+        'Petir': '/icon/petir.json',
+        'unknown': '/icon/berawan.json'
     };
 
     // Helper function to create label HTML
     const createLabelHTML = useCallback((forecast) => {
-        const weatherIcon = weatherIcons[forecast.weather] || '❓';
+        const weatherIconPath = weatherIcons[forecast.weather] || weatherIcons['unknown'];
         const windAngle = getWindDirectionAngle(forecast.wind_from);
+        const borderColor = KATEGORI_GELOMBANG[forecast.wave_cat]?.color || '#c1d4e3aa';
+        const waveColor = KATEGORI_GELOMBANG[forecast.wave_cat]?.color || '#c1d4e3aa';
         
         return `
-            <div style="
-                background: rgba(255, 255, 255, 0.95);
-                backdrop-filter: blur(4px);
-                border-radius: 8px;
-                padding: 8px 10px;
-                font-size: 11px;
-                font-weight: 600;
-                color: #1f2937;
-                text-align: center;
-                border: 2px solid ${KATEGORI_GELOMBANG[forecast.wave_cat]?.color || '#c1d4e3aa'};
-                box-shadow: 0 2px 6px rgba(0,0,0,0.25);
-                white-space: nowrap;
-                pointer-events: none;
-                cursor: default;
-                postion: relative;
-                justify-content: center;
-            ">
-                <div style="font-size: 20px; margin-bottom: 2px;">
-                    ${weatherIcon}
+            <div class="bg-white/95 backdrop-blur rounded-lg px-1 py-1 text-[11px] font-semibold text-gray-800 shadow-md pointer-events-none cursor-default flex flex-col items-center min-w-[100px]" style="border: 2px solid ${borderColor};">
+                <!-- Row 1: Weather Icon -->
+                <div class="flex items-center justify-center mb-1">
+                    <lottie-player
+                        src="${weatherIconPath}"
+                        background="transparent"
+                        speed="1"
+                        style="width: 60px; height: 60px;"
+                        loop
+                        autoplay
+                    ></lottie-player>
                 </div>
-                <div style="font-size: 16px; font-weight: 700; color: ${KATEGORI_GELOMBANG[forecast.wave_cat]?.color || '#c1d4e3aa'};">
-                    ${forecast.wave_height} m
+
+                <!-- Row 2: Wave Height -->
+                <p class="text-[13px] font-semibold text-gray-700  w-full bg-gray-200 text-center rounded-sm">Gelombang</p>
+                
+                <!-- Row 2: Wave Height -->
+                <div class="flex items-center justify-center mb-1">
+                    <div class="text-lg font-bold" style="color: ${waveColor};">
+                        ${forecast.wave_height} m
+                    </div>
                 </div>
-                <div style="font-size: 12px; color: #042464ff; background: #e0e7ffcc; width: 100%;">
-                    <p>Angin</p>
-                </div>
-                <div style="display: flex; position: relative; justify-content: center; flex-direction: row; gap: 6px; font-size: 13px; font-weight: 600; color: #374151; margin-top: 3px;">
+                
+                <!-- Row 3: Teks wind -->
+                <p class="text-[14px] font-semibold text-gray-700 mb-1 w-full bg-gray-200 text-center rounded-sm">Angin</p>
+                
+                <!-- Row 4: Wind Direction and Speed -->
+                <div class="flex items-center justify-center gap-2 mb-1">
                     <svg 
-                        width="14" 
-                        height="14" 
+                        width="20" 
+                        height="20" 
                         viewBox="0 0 24 24" 
                         fill="none" 
                         stroke="currentColor" 
                         stroke-width="2" 
                         stroke-linecap="round" 
                         stroke-linejoin="round"
-                        style="transform: rotate(${windAngle+180}deg); transition: transform 0.3s ease;"
+                        class="transition-transform duration-300"
+                        style="transform: rotate(${windAngle+180}deg);"
                     >
                         <polygon points="12 2 19 21 12 17 5 21 12 2"></polygon>
                     </svg>
-                    <p>${forecast.wind_speed}kt</p>
-                </div>
-                <div style="display: flex; align-items: center; justify-content: center; gap: 4px; font-size: 10px; color: #6b7280; margin-top: 3px;">
-                    <span>${forecast.wind_from}</span>
+                    <span class="text-[14px] font-semibold text-gray-700">${forecast.wind_speed}kt</span>
                 </div>
             </div>
         `;
@@ -265,7 +266,7 @@ const PerairanPage = ({
         const lineColor = '#dededeff';
         const line = L.polyline([centerPos, labelPos], {
             color: lineColor,
-            weight: 8,
+            weight: 4,
             opacity: 0.9,
             className: 'connector-line'
         });
@@ -426,6 +427,13 @@ const PerairanPage = ({
         if (mapRef.current || !mapContainerRef.current) return;
 
         const initializeMap = async () => {
+            // Load Lottie player script if not already loaded
+            if (!document.querySelector('script[src*="lottie-player"]')) {
+                const script = document.createElement('script');
+                script.src = 'https://unpkg.com/@lottiefiles/lottie-player@latest/dist/lottie-player.js';
+                document.head.appendChild(script);
+            }
+            
             // Dynamically import Leaflet CSS
             await import('leaflet/dist/leaflet.css');
             const L = (await import('leaflet')).default;

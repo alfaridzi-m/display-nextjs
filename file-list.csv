@@ -1,0 +1,84 @@
+path,description
+/.gitignore,Menambahkan file konfigurasi untuk mengabaikan file tertentu dari Git
+/.vscode/tasks.json,Menambahkan konfigurasi task untuk VS Code
+/app/api/configure/route.js,Menambahkan API route untuk konfigurasi sistem
+/app/components/clock.jsx,Menambahkan komponen untuk menampilkan jam dan tanggal real-time dalam format Indonesia
+/app/components/CoordinatePicker.js,Menambahkan komponen untuk memilih koordinat di peta
+/app/components/dailyforecast.jsx,Menambahkan komponen untuk menampilkan prakiraan cuaca harian
+/app/components/hourly-card.jsx,Menambahkan kartu tampilan prakiraan cuaca per jam
+/app/components/infopanel.jsx,Menambahkan panel informasi cuaca dan maritim
+/app/components/info-row.jsx,Menambahkan baris informasi untuk menampilkan data cuaca
+/app/components/nav-item.jsx,Menambahkan komponen untuk membuat item navigasi
+/app/components/perairan.jsx,Menambahkan komponen untuk menampilkan informasi perairan
+/app/components/petaPage.jsx,Menambahkan halaman peta untuk visualisasi lokasi
+/app/components/port-card.jsx,Menambahkan kartu informasi pelabuhan
+/app/components/portpage.jsx,Menambahkan halaman utama informasi pelabuhan
+/app/components/running-text.jsx,Menambahkan teks berjalan untuk informasi penting
+/app/components/side-bar.jsx,Menambahkan sidebar navigasi aplikasi
+/app/components/theme.jsx,Menambahkan konfigurasi tema warna dan tampilan aplikasi
+/app/components/tides-chart.jsx,Menambahkan grafik pasang surut air laut
+/app/components/toast.jsx,Menambahkan notifikasi toast untuk pesan sistem
+/app/components/top-bar.jsx,Menambahkan bar navigasi bagian atas
+/app/components/wave-color.jsx,Menambahkan komponen untuk pewarnaan gelombang
+/app/components/wave-fill.jsx,Menambahkan animasi pengisian gelombang untuk navigasi aktif
+/app/components/weather-icon.jsx,Menambahkan ikon animasi cuaca menggunakan Lottie
+/app/components/weatherpage.jsx,Menambahkan halaman utama informasi cuaca
+/app/components/wind-dir.jsx,Menambahkan indikator arah angin
+/app/config-select/page.js,Menambahkan halaman untuk memilih konfigurasi yang tersimpan
+/app/configure/components/atoms/Badge.jsx,Menambahkan komponen badge dasar untuk label
+/app/configure/components/atoms/Button.jsx,Menambahkan komponen tombol dasar
+/app/configure/components/atoms/Card.jsx,Menambahkan komponen kartu dasar
+/app/configure/components/atoms/Icon.jsx,Menambahkan komponen ikon dasar
+/app/configure/components/atoms/Input.jsx,Menambahkan komponen input form dasar
+/app/configure/components/atoms/Label.jsx,Menambahkan komponen label form dasar
+/app/configure/components/index.js,Menambahkan file ekspor komponen konfigurasi
+/app/configure/components/molecules/FormField.jsx,Menambahkan field form dengan label dan input
+/app/configure/components/molecules/PortBadge.jsx,Menambahkan badge untuk menampilkan informasi pelabuhan
+/app/configure/components/molecules/ProgressIndicator.jsx,Menambahkan indikator progress tahapan konfigurasi
+/app/configure/components/molecules/SummaryCard.jsx,Menambahkan kartu ringkasan informasi konfigurasi
+/app/configure/components/molecules/TabButton.jsx,Menambahkan tombol tab untuk navigasi form
+/app/configure/components/organisms/ActionButtons.jsx,Menambahkan tombol aksi untuk simpan dan batal konfigurasi
+/app/configure/components/organisms/BackgroundTab.jsx,Menambahkan tab untuk konfigurasi background tampilan
+/app/configure/components/organisms/BasicInfoTab.jsx,Menambahkan tab untuk informasi dasar konfigurasi
+/app/configure/components/organisms/ConfigSummary.jsx,Menambahkan ringkasan lengkap konfigurasi
+/app/configure/components/organisms/LocationTab.jsx,Menambahkan tab untuk konfigurasi lokasi koordinat
+/app/configure/components/organisms/PortsTab.jsx,Menambahkan tab untuk memilih pelabuhan
+/app/configure/components/organisms/WilayahTab.jsx,Menambahkan tab untuk memilih wilayah perairan
+/app/configure/hooks/useConfigForm.js,Menambahkan custom hook untuk mengelola state form konfigurasi
+/app/configure/page.js,Menambahkan halaman utama konfigurasi sistem
+/app/configure/page.old.js,Menambahkan file backup halaman konfigurasi lama
+/app/globals.css,Menambahkan file CSS global untuk styling aplikasi
+/app/hooks/useToast.js,Menambahkan custom hook untuk mengelola notifikasi toast
+/app/infomet/page.js,Menambahkan halaman informasi meteorologi maritim
+/app/layout.js,Menambahkan layout root aplikasi Next.js
+/app/page.js,Menambahkan halaman utama aplikasi (landing page)
+/app/periran/page.js,Menambahkan halaman informasi perairan
+/app/periran2/page.js,Menambahkan halaman informasi perairan versi alternatif
+/config/bmkg1977.json,Menambahkan file konfigurasi tersimpan untuk lokasi BMKG 1977
+/config/bmkg97124.json,Menambahkan file konfigurasi tersimpan untuk lokasi BMKG 97124
+/config/s1997.json,Menambahkan file konfigurasi tersimpan untuk lokasi S1997
+/eslint.config.mjs,Menambahkan konfigurasi ESLint untuk linting kode
+/jsconfig.json,Menambahkan konfigurasi JavaScript untuk path alias dan kompilasi
+/next.config.mjs,Menambahkan konfigurasi Next.js framework
+/package.json,Menambahkan daftar dependensi dan script npm
+/package-lock.json,Menambahkan lock file untuk versi dependensi npm
+/postcss.config.mjs,Menambahkan konfigurasi PostCSS untuk processing CSS
+/public/file.svg,Menambahkan ikon file SVG
+/public/globe.svg,Menambahkan ikon globe/bola dunia SVG
+/public/icon/berawan.json,Menambahkan animasi Lottie untuk kondisi cuaca berawan
+/public/icon/berawan-tebal.json,Menambahkan animasi Lottie untuk kondisi cuaca berawan tebal
+/public/icon/cerah.json,Menambahkan animasi Lottie untuk kondisi cuaca cerah
+/public/icon/cerah-berawan.json,Menambahkan animasi Lottie untuk kondisi cuaca cerah berawan
+/public/icon/haze.json,Menambahkan animasi Lottie untuk kondisi cuaca berkabut/haze
+/public/icon/hujan-lebat.json,Menambahkan animasi Lottie untuk kondisi hujan lebat
+/public/icon/hujan-petir.json,Menambahkan animasi Lottie untuk kondisi hujan disertai petir
+/public/icon/hujan-ringan.json,Menambahkan animasi Lottie untuk kondisi hujan ringan
+/public/icon/hujan-sedang.json,Menambahkan animasi Lottie untuk kondisi hujan sedang
+/public/icon/kabut.json,Menambahkan animasi Lottie untuk kondisi kabut tebal
+/public/icon/petir.json,Menambahkan animasi Lottie untuk kondisi petir/badai
+/public/next.svg,Menambahkan logo Next.js
+/public/pelabuhan.geojson,Menambahkan data GeoJSON lokasi pelabuhan Indonesia
+/public/vercel.svg,Menambahkan logo Vercel
+/public/wilpro.geojson,Menambahkan data GeoJSON wilayah provinsi Indonesia
+/public/window.svg,Menambahkan ikon window SVG
+/README.md,Menambahkan dokumentasi proyek
