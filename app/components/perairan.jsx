@@ -47,49 +47,69 @@ const getWindDirectionAngle = (direction) => {
 };
 
 // PINDAH: Ekstrak logika fetching dan parsing data ke fungsi terpisah di luar komponen
-async function fetchAndProcessForecasts(wilayahAktif, url = 'https://maritim.bmkg.go.id/marine-data/combine/forecast.json') {
-    const weather_dict = { 1: 'Cerah', 2: 'Cerah Berawan', 3: 'Berawan', 4: 'Berawan Tebal', 5: 'Hujan Ringan', 6: 'Hujan Sedang', 7: 'Hujan Lebat', 8: 'Hujan Sangat Lebat', 9: 'Hujan Ekstrem', 10: 'Hujan Petir', 11: 'Kabut/Asap', 12: 'Udara Kabur', 13: 'Kabut', 14: 'Petir', '': 'unknown' };
-    const wave_cat_dict = { 1: "Tenang", 2: "Rendah", 3: "Sedang", 4: "Tinggi", 5: "Sangat Tinggi", 6: "Ekstrem", 7: "Sangat Ekstrem", '': 'unknown' };
-    const dir_dict = { 1: "Utara", 2: "Utara Timur Laut", 3: "Timur Laut", 4: "Timur Timur Laut", 5: "Timur", 6: "Timur Tenggara", 7: "Tenggara", 8: "Selatan Tenggara", 9: "Selatan", 10: "Selatan Barat Daya", 11: "Barat Daya", 12: "Barat Barat Daya", 13: "Barat", 14: "Barat Barat Laut", 15: "Barat Laut", 16: "Utara Barat Laut", '': 'unknown' };
-
-
-    function parseFctCode(id, fct_code) {
-        const parts = fct_code.split('|');
-        const timeStr = parts[0];
-        const year = new Date().getFullYear();
-        const base = dayjs.utc(`${year}${timeStr}`, 'YYYYMMDDHH').toDate();
-        const forecasts = parts.slice(1).map((part, idx) => {
-            const row = part.split(',');
-            const dt = new Date(base);
-            const i = idx + 1;
-            dt.setHours(dt.getHours() + (i <= 25 ? i - 1 : 24 + ((i - 25) * 3)));
-            return { id, time: dt, weather: row[0] ? weather_dict[row[0]] : 'unknown', wave_cat: row[1] ? wave_cat_dict[row[1]] : 'unknown', wave_height: row[2] ? parseFloat(row[2]) : 0, wind_speed: row[3] ? parseInt(row[3]) : 0, wind_gust: row[4] ? parseInt(row[4]) : 0, wind_from: row[5] ? dir_dict[row[5]] : 'unknown' };
-        });
-        return forecasts;
-    }
-
+async function fetchAndProcessForecasts(wilayahAktif, baseUrl = 'https://maritim.bmkg.go.id/marine-data/perairan/') {
     try {
-        const resp = await fetch(url);
-        if (!resp.ok) throw new Error(`HTTP error! status: ${resp.status}`);
-        const data = await resp.json();
         const lookup = {};
         const allTimes = new Set();
         const now = new Date();
 
-        for (const area of data.area) {
-            if (!wilayahAktif.includes(area.id)) continue;
-            const allForecasts = parseFctCode(area.id, area.fct_code);
-            const futureForecasts = allForecasts.filter(f => f.time > now);
+        // Fetch data for each region in wilayahAktif
+        for (const regionId of wilayahAktif) {
+            const url = `${baseUrl}${regionId}.json`;
+            
+            try {
+                const resp = await fetch(url);
+                if (!resp.ok) {
+                    console.warn(`Failed to fetch data for region ${regionId}: ${resp.status}`);
+                    continue;
+                }
+                const data = await resp.json();
+                
+                // Combine forecast_day1 (hourly) and forecast_day2-4 (3-hourly)
+                const allForecasts = [
+                    ...(data.forecast_day1 || []),
+                    ...(data['forecast_day2-4'] || [])
+                ];
+                
+                // Transform the data to match our expected format
+                const transformedForecasts = allForecasts.map(f => ({
+                    id: data.code || regionId,
+                    time: new Date(f.time),
+                    weather: f.weather || 'unknown',
+                    wave_cat: f.wave_cat || 'unknown',
+                    wave_height: f.wave_height || 0,
+                    wind_speed: f.wind_speed || 0,
+                    wind_gust: f.wind_gust || 0,
+                    wind_from: f.wind_from || 'unknown',
+                    temp_avg: f.temp_avg,
+                    rh_avg: f.rh_avg,
+                    current_to: f.current_to,
+                    current_speed: f.current_speed
+                }));
+                
+                // Calculate date range: start from beginning of today (00:00 UTC), not current time
+                const today = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+                const maxDate = new Date(today);
+                maxDate.setUTCDate(maxDate.getUTCDate() + 3); // End of day after tomorrow
+                
+                // Filter for forecasts from today 00:00 UTC through the next 3 days
+                const relevantForecasts = transformedForecasts.filter(f => f.time >= today && f.time < maxDate);
 
-            if (futureForecasts.length > 0) {
-                lookup[area.id] = futureForecasts;
-                futureForecasts.forEach(f => allTimes.add(f.time.toISOString()));
-            } else if (allForecasts.length > 0) {
-                const lastForecast = allForecasts[allForecasts.length - 1];
-                lookup[area.id] = [lastForecast];
-                allTimes.add(lastForecast.time.toISOString());
+                if (relevantForecasts.length > 0) {
+                    lookup[regionId] = relevantForecasts;
+                    relevantForecasts.forEach(f => allTimes.add(f.time.toISOString()));
+                    console.log(`${regionId}: Loaded ${relevantForecasts.length} forecasts from ${relevantForecasts[0].time.toISOString()} to ${relevantForecasts[relevantForecasts.length-1].time.toISOString()}`);
+                } else if (transformedForecasts.length > 0) {
+                    // If no relevant forecasts, use all available
+                    lookup[regionId] = transformedForecasts;
+                    transformedForecasts.forEach(f => allTimes.add(f.time.toISOString()));
+                    console.log(`${regionId}: Using all ${transformedForecasts.length} available forecasts`);
+                }
+            } catch (err) {
+                console.error(`Error fetching data for region ${regionId}:`, err);
             }
         }
+        
         const sortedTimes = Array.from(allTimes).sort();
         return { forecastData: lookup, timeSteps: sortedTimes };
     } catch (err) {
@@ -98,46 +118,137 @@ async function fetchAndProcessForecasts(wilayahAktif, url = 'https://maritim.bmk
     }
 }
 
-// Ringkas prakiraan tiap 6 jam (berbasis UTC) per wilayah
+// Ringkas prakiraan per 6 jam dengan aturan baru:
+// Day 0 (Hari ini): 00 UTC = point data only, 06/12/18 UTC = 6-hour window
+// Day 1 & 2 (Besok & Lusa): All timesteps (00/06/12/18 UTC) = 6-hour window
 function summarizeForecastsEvery6Hours(forecastData) {
     const summaries = {};
     const allBuckets = new Set();
-
+    
+    // Use UTC-based date calculations
+    const now = new Date();
+    const today = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+    const tomorrow = new Date(today);
+    tomorrow.setUTCDate(tomorrow.getUTCDate() + 1);
+    const dayAfterTomorrow = new Date(today);
+    dayAfterTomorrow.setUTCDate(dayAfterTomorrow.getUTCDate() + 2);
+    
+    // Define 6-hour timesteps for each day: 00, 06, 12, 18 UTC
+    const timesteps = [0, 6, 12, 18];
+    const days = [
+        { date: today, label: 'today' },
+        { date: tomorrow, label: 'tomorrow' },
+        { date: dayAfterTomorrow, label: 'dayAfterTomorrow' }
+    ];
+    
     for (const regionId in forecastData) {
         const arr = forecastData[regionId] || [];
         summaries[regionId] = {};
-        for (const f of arr) {
-            const d = new Date(f.time);
-            const bucketHour = Math.floor(d.getUTCHours() / 6) * 6; // 0,6,12,18
-            const bucket = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate(), bucketHour));
-            const key = bucket.toISOString();
-            allBuckets.add(key);
-            if (!summaries[regionId][key]) summaries[regionId][key] = { count: 0, maxWave: 0, categories: {} };
-            const s = summaries[regionId][key];
-            s.count += 1;
-            s.maxWave = Math.max(s.maxWave, f.wave_height || 0);
-            s.categories[f.wave_cat || 'unknown'] = (s.categories[f.wave_cat || 'unknown'] || 0) + 1;
+        
+        // Process each day and timestep
+        for (const { date, label } of days) {
+            for (const hour of timesteps) {
+                const bucketTime = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate(), hour, 0, 0));
+                const key = bucketTime.toISOString();
+                allBuckets.add(key);
+                
+                summaries[regionId][key] = { count: 0, maxWave: 0, categories: {}, forecasts: [] };
+                
+                // Determine which forecasts to include based on rules
+                let forecastsToInclude = [];
+                
+                if (label === 'today' && hour === 0) {
+                    // Day 0, 00 UTC: use point data only (exact 00 UTC record)
+                    const exactMatch = arr.find(f => {
+                        const fTime = new Date(f.time);
+                        return fTime.getUTCFullYear() === date.getUTCFullYear() &&
+                               fTime.getUTCMonth() === date.getUTCMonth() &&
+                               fTime.getUTCDate() === date.getUTCDate() &&
+                               fTime.getUTCHours() === 0;
+                    });
+                    if (exactMatch) {
+                        forecastsToInclude.push(exactMatch);
+                    }
+                } else {
+                    // All other cases: 6-hour summary window
+                    const windowStart = new Date(bucketTime);
+                    windowStart.setUTCHours(windowStart.getUTCHours() - 6);
+                    
+                    // For 6-hour window: include forecasts from (bucketTime - 6 hours) up to and including bucketTime
+                    forecastsToInclude = arr.filter(f => {
+                        const fTime = new Date(f.time);
+                        return fTime > windowStart && fTime <= bucketTime;
+                    });
+                    
+                    // Debug logging for empty buckets
+                    if (forecastsToInclude.length === 0) {
+                        console.log(`No forecasts found for ${regionId} at ${key}. Window: ${windowStart.toISOString()} to ${bucketTime.toISOString()}`);
+                        console.log(`Available times:`, arr.map(f => new Date(f.time).toISOString()).slice(0, 5));
+                    }
+                }
+                
+                // Aggregate the forecasts
+                const s = summaries[regionId][key];
+                for (const f of forecastsToInclude) {
+                    s.count += 1;
+                    s.maxWave = Math.max(s.maxWave, f.wave_height || 0);
+                    s.categories[f.wave_cat || 'unknown'] = (s.categories[f.wave_cat || 'unknown'] || 0) + 1;
+                    s.forecasts.push(f);
+                }
+                
+                // Log summary for debugging
+                if (forecastsToInclude.length > 0) {
+                    const bucketDate = new Date(key);
+                    console.log(`${regionId} ${bucketDate.getUTCDate()}/${bucketDate.getUTCMonth()+1} ${bucketDate.getUTCHours()}:00 - ${forecastsToInclude.length} forecasts, dominant: ${Object.keys(s.categories).reduce((a, b) => s.categories[a] > s.categories[b] ? a : b, 'unknown')}, maxWave: ${s.maxWave}m`);
+                }
+            }
         }
     }
-
+    
     const timeSteps = Array.from(allBuckets).sort();
+    console.log(`Created ${timeSteps.length} timesteps for ${Object.keys(summaries).length} regions`);
     return { summaries, timeSteps };
 }
 
-// Ambil waktu forecast terdekat terhadap bucket 6 jam
-function getNearestTimeForBucket(bucketISO, allTimes) {
+// Ambil waktu forecast yang representatif untuk bucket timestep
+// Untuk timestep dengan 6-hour window, ambil waktu di tengah window (3 jam sebelum bucket time)
+// Untuk point data (today 00 UTC), gunakan exact time
+function getNearestTimeForBucket(bucketISO, allTimes, forecastData, regionId) {
     if (!allTimes || allTimes.length === 0) return bucketISO;
-    const target = new Date(bucketISO).getTime();
-    let nearest = allTimes[0];
-    let bestDiff = Math.abs(new Date(nearest).getTime() - target);
-    for (const t of allTimes) {
-        const d = Math.abs(new Date(t).getTime() - target);
-        if (d < bestDiff) {
-            bestDiff = d;
-            nearest = t;
+    
+    const bucketDate = new Date(bucketISO);
+    const now = new Date();
+    const today = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+    
+    // Check if this is today 00 UTC (point data only)
+    const isToday00UTC = bucketDate.getUTCDate() === today.getUTCDate() &&
+                         bucketDate.getUTCMonth() === today.getUTCMonth() &&
+                         bucketDate.getUTCFullYear() === today.getUTCFullYear() &&
+                         bucketDate.getUTCHours() === 0;
+    
+    if (isToday00UTC) {
+        // For today 00 UTC, use exact 00 UTC time
+        return bucketISO;
+    } else {
+        // For 6-hour windows, use middle of the window (3 hours before bucket time)
+        const target = new Date(bucketDate);
+        target.setUTCHours(target.getUTCHours() - 3);
+        const targetTime = target.getTime();
+        
+        // Find the closest forecast time to the middle of the window
+        let nearest = allTimes[0];
+        let bestDiff = Math.abs(new Date(nearest).getTime() - targetTime);
+        
+        for (const t of allTimes) {
+            const forecastTime = new Date(t).getTime();
+            const d = Math.abs(forecastTime - targetTime);
+            if (d < bestDiff) {
+                bestDiff = d;
+                nearest = t;
+            }
         }
+        return nearest;
     }
-    return nearest;
 }
 
 
@@ -381,49 +492,81 @@ const PerairanPage = ({
         const L = window.L;
         if (!L) return;
 
-        for (const regionId in featureLayersRef.current) {
-            const layer = featureLayersRef.current[regionId];
-            let waveCategoryColor = KATEGORI_GELOMBANG.unknown.color;
+        // Use requestAnimationFrame to ensure smooth updates
+        requestAnimationFrame(() => {
+            for (const regionId in featureLayersRef.current) {
+                const layer = featureLayersRef.current[regionId];
+                let waveCategoryColor = KATEGORI_GELOMBANG.unknown.color;
+                let displayForecast = null;
 
-            const regionBuckets = sixHourlySummary[regionId];
-            if (regionBuckets && regionBuckets[timeISO]) {
-                const bucket = regionBuckets[timeISO];
-                let dominant = 'unknown';
-                let max = 0;
-                for (const cat in bucket.categories) {
-                    if (bucket.categories[cat] > max) {
-                        max = bucket.categories[cat];
-                        dominant = cat;
+                const regionBuckets = sixHourlySummary[regionId];
+                if (regionBuckets && regionBuckets[timeISO]) {
+                    const bucket = regionBuckets[timeISO];
+                    
+                    // Determine dominant wave category
+                    let dominant = 'unknown';
+                    let max = 0;
+                    for (const cat in bucket.categories) {
+                        if (bucket.categories[cat] > max) {
+                            max = bucket.categories[cat];
+                            dominant = cat;
+                        }
                     }
-                }
-                waveCategoryColor = getColorForWaveCategory(dominant);
-            }
-            layer.setStyle({ fillColor: waveCategoryColor });
-
-            // Update meteorological label
-            const actualTimeISO = getNearestTimeForBucket(timeISO, timeSteps);
-            const forecast = forecastData[regionId]?.find(f => f.time.toISOString() === actualTimeISO);
-            
-            if (forecast && labelLayersRef.current[regionId]) {
-                // Remove old label and connector line
-                mapRef.current.removeLayer(labelLayersRef.current[regionId]);
-                if (connectorLinesRef.current[regionId]) {
-                    mapRef.current.removeLayer(connectorLinesRef.current[regionId]);
-                }
-                if (connectorEndMarkersRef.current[regionId]) {
-                    mapRef.current.removeLayer(connectorEndMarkersRef.current[regionId]);
+                    waveCategoryColor = getColorForWaveCategory(dominant);
+                    
+                    // For display, use the forecast with MAXIMUM wave height
+                    // This ensures both polygon color and label show the most significant condition
+                    if (bucket.forecasts && bucket.forecasts.length > 0) {
+                        // Use the forecast with the maximum wave height as representative
+                        displayForecast = bucket.forecasts.reduce((maxF, f) => 
+                            (f.wave_height > maxF.wave_height ? f : maxF), 
+                            bucket.forecasts[0]
+                        );
+                        
+                        // Update polygon color to match the max wave height forecast's category
+                        // This ensures polygon and label colors are consistent
+                        waveCategoryColor = getColorForWaveCategory(displayForecast.wave_cat);
+                    } else {
+                        console.warn(`Empty bucket for ${regionId} at ${timeISO}`);
+                    }
+                } else {
+                    console.warn(`No bucket found for ${regionId} at ${timeISO}`);
                 }
                 
-                // Create and add new label with current position settings
-                const bounds = layer.getBounds();
-                const newLabel = createMeteoLabel(L, regionId, forecast, bounds, labelPosition, labelOffset, layer);
-                if (newLabel) {
-                    newLabel.addTo(mapRef.current);
-                    labelLayersRef.current[regionId] = newLabel;
+                // Fallback: find nearest forecast from raw data if summary doesn't have data
+                if (!displayForecast && forecastData[regionId]) {
+                    const targetTime = new Date(timeISO);
+                    displayForecast = forecastData[regionId].reduce((nearest, f) => {
+                        const nearestDiff = Math.abs(new Date(nearest.time) - targetTime);
+                        const fDiff = Math.abs(new Date(f.time) - targetTime);
+                        return fDiff < nearestDiff ? f : nearest;
+                    }, forecastData[regionId][0]);
+                }
+                
+                layer.setStyle({ fillColor: waveCategoryColor });
+
+                // Update meteorological label
+                if (displayForecast && labelLayersRef.current[regionId]) {
+                    // Remove old label and connector line
+                    mapRef.current.removeLayer(labelLayersRef.current[regionId]);
+                    if (connectorLinesRef.current[regionId]) {
+                        mapRef.current.removeLayer(connectorLinesRef.current[regionId]);
+                    }
+                    if (connectorEndMarkersRef.current[regionId]) {
+                        mapRef.current.removeLayer(connectorEndMarkersRef.current[regionId]);
+                    }
+                    
+                    // Create and add new label with current position settings
+                    const bounds = layer.getBounds();
+                    const newLabel = createMeteoLabel(L, regionId, displayForecast, bounds, labelPosition, labelOffset, layer);
+                    if (newLabel) {
+                        newLabel.addTo(mapRef.current);
+                        labelLayersRef.current[regionId] = newLabel;
+                    }
                 }
             }
-        }
-    }, [sixHourlySummary, forecastData, timeSteps, createMeteoLabel, labelPosition, labelOffset]);
+        });
+    }, [sixHourlySummary, forecastData, createMeteoLabel, labelPosition, labelOffset]);
 
     useEffect(() => {
         if (mapRef.current || !mapContainerRef.current) return;
@@ -520,20 +663,42 @@ const PerairanPage = ({
                     }
                 }).addTo(mapRef.current);
 
-                // Initialize meteorological labels for active regions
-                wilayahAktif.forEach(regionId => {
-                    const feature = geojsonData.features.find(f => f.properties.ID_MAR === regionId);
-                    if (feature && featureLayersRef.current[regionId]) {
-                        const layer = featureLayersRef.current[regionId];
-                        const bounds = layer.getBounds();
-                        const forecast = forecastData[regionId]?.[0];
-                        const label = createMeteoLabel(L, regionId, forecast, bounds, labelPosition, labelOffset, layer);
-                        if (label) {
-                            label.addTo(mapRef.current);
-                            labelLayersRef.current[regionId] = label;
+                // Initialize meteorological labels for active regions with first timestep data
+                if (sixSteps.length > 0) {
+                    const firstTimeStep = sixSteps[0];
+                    wilayahAktif.forEach(regionId => {
+                        const feature = geojsonData.features.find(f => f.properties.ID_MAR === regionId);
+                        if (feature && featureLayersRef.current[regionId]) {
+                            const layer = featureLayersRef.current[regionId];
+                            const bounds = layer.getBounds();
+                            
+                            // Get forecast from first summary bucket
+                            let displayForecast = null;
+                            if (summaries[regionId] && summaries[regionId][firstTimeStep]) {
+                                const bucket = summaries[regionId][firstTimeStep];
+                                if (bucket.forecasts && bucket.forecasts.length > 0) {
+                                    displayForecast = bucket.forecasts.reduce((max, f) => 
+                                        (f.wave_height > max.wave_height ? f : max), 
+                                        bucket.forecasts[0]
+                                    );
+                                }
+                            }
+                            
+                            // Fallback: use first available forecast if summary doesn't have data
+                            if (!displayForecast && forecastData[regionId] && forecastData[regionId].length > 0) {
+                                displayForecast = forecastData[regionId][0];
+                            }
+                            
+                            if (displayForecast) {
+                                const label = createMeteoLabel(L, regionId, displayForecast, bounds, labelPosition, labelOffset, layer);
+                                if (label) {
+                                    label.addTo(mapRef.current);
+                                    labelLayersRef.current[regionId] = label;
+                                }
+                            }
                         }
-                    }
-                });
+                    });
+                }
 
                 setIsLoading(false);
 
@@ -612,7 +777,7 @@ const PerairanPage = ({
 
     // Update all labels when position or offset settings change
     useEffect(() => {
-        if (!mapRef.current || !forecastData || !sixHourlyTimeSteps.length) return;
+        if (!mapRef.current || !sixHourlySummary || !sixHourlyTimeSteps.length) return;
         
         const L = window.L;
         if (!L) return;
@@ -629,15 +794,35 @@ const PerairanPage = ({
                     mapRef.current.removeLayer(connectorEndMarkersRef.current[regionId]);
                 }
                 
-                // Get current forecast
+                // Get current forecast from summary bucket
                 const currentTime = sixHourlyTimeSteps[currentTimeIndex];
-                const actualTimeISO = getNearestTimeForBucket(currentTime, timeSteps);
-                const forecast = forecastData[regionId]?.find(f => f.time.toISOString() === actualTimeISO);
+                const regionBuckets = sixHourlySummary[regionId];
+                let displayForecast = null;
                 
-                if (forecast && featureLayersRef.current[regionId]) {
+                if (regionBuckets && regionBuckets[currentTime]) {
+                    const bucket = regionBuckets[currentTime];
+                    if (bucket.forecasts && bucket.forecasts.length > 0) {
+                        displayForecast = bucket.forecasts.reduce((max, f) => 
+                            (f.wave_height > max.wave_height ? f : max), 
+                            bucket.forecasts[0]
+                        );
+                    }
+                }
+                
+                // Fallback: use nearest forecast from raw data
+                if (!displayForecast && forecastData[regionId]) {
+                    const targetTime = new Date(currentTime);
+                    displayForecast = forecastData[regionId].reduce((nearest, f) => {
+                        const nearestDiff = Math.abs(new Date(nearest.time) - targetTime);
+                        const fDiff = Math.abs(new Date(f.time) - targetTime);
+                        return fDiff < nearestDiff ? f : nearest;
+                    }, forecastData[regionId][0]);
+                }
+                
+                if (displayForecast && featureLayersRef.current[regionId]) {
                     const layer = featureLayersRef.current[regionId];
                     const bounds = layer.getBounds();
-                    const newLabel = createMeteoLabel(L, regionId, forecast, bounds, labelPosition, labelOffset, layer);
+                    const newLabel = createMeteoLabel(L, regionId, displayForecast, bounds, labelPosition, labelOffset, layer);
                     if (newLabel) {
                         newLabel.addTo(mapRef.current);
                         labelLayersRef.current[regionId] = newLabel;
@@ -645,7 +830,7 @@ const PerairanPage = ({
                 }
             }
         });
-    }, [labelPosition, labelOffset, forecastData, sixHourlyTimeSteps, currentTimeIndex, timeSteps, createMeteoLabel, wilayahAktif]);
+    }, [labelPosition, labelOffset, sixHourlySummary, forecastData, sixHourlyTimeSteps, currentTimeIndex, createMeteoLabel, wilayahAktif]);
 
     useEffect(() => {
         if (isPlaying) {
@@ -681,27 +866,40 @@ const PerairanPage = ({
                         {/* Time overlay positioned on top of the map */}
                         {!isLoading && sixHourlyTimeSteps.length > 0 && (
                             <div className="absolute bottom-2 left-1/2 -translate-x-1/2 z-[1000] pointer-events-auto">
-                                <div className="max-w-md mx-auto bg-white/70 backdrop-blur p-2 rounded-lg shadow-inner">
-                                    <div 
-                                        className="flex items-center justify-between mb-2 cursor-pointer hover:bg-white/30 rounded px-1 transition-colors"
-                                        onClick={() => setIsPlaying(!isPlaying)}
-                                        title={isPlaying ? 'Click to Pause' : 'Click to Play'}
-                                    >
-                                        <p className="text-xs font-semibold flex items-center gap-1">
-                                            {isPlaying ? '▶' : '⏸'} Prakiraan Cuaca Jam
-                                        </p>
-                                    </div>
-                                    <div className="flex w-full items-center justify-center gap-2">
-                                        {sixHourlyTimeSteps.map((t, idx) => {
-                                            const label = (idx + 1) * 6; // 6, 12, 18, ...
-                                            const isActive = idx === currentTimeIndex;
+                                <div className="max-w-4xl mx-auto bg-white/70 backdrop-blur p-3 rounded-lg shadow-inner">
+                                    {/* New UI: Display time slots as |Hari ini|Besok|Lusa| with 0 6 12 18 for each */}
+                                    <div className="flex items-start gap-3">
+                                        {['Hari ini', 'Besok', 'Lusa'].map((dayLabel, dayIdx) => {
+                                            // Get the 4 timesteps for this day (indices: dayIdx*4 to dayIdx*4+3)
+                                            const dayTimeSteps = sixHourlyTimeSteps.slice(dayIdx * 4, dayIdx * 4 + 4);
+                                            
                                             return (
-                                                <span
-                                                    key={t}
-                                                    className={`px-2 py-1 rounded text-xs font-semibold ${isActive ? 'bg-blue-600 text-white' : ''} ${!isActive ? `${theme.text.primary} bg-white/50 dark:bg-white/10` : ''}`}
-                                                >
-                                                    {label}
-                                                </span>
+                                                <div key={dayLabel} className="flex flex-col items-center">
+                                                    <div className="text-sm font-bold mb-2 text-gray-800">{dayLabel}</div>
+                                                    <div className="flex gap-2">
+                                                        {dayTimeSteps.map((t, hourIdx) => {
+                                                            const globalIdx = dayIdx * 4 + hourIdx;
+                                                            const isActive = globalIdx === currentTimeIndex;
+                                                            const timeDate = new Date(t);
+                                                            // Convert UTC to local time (WIB: UTC+7)
+                                                            const hourLabel = timeDate.getHours().toString().padStart(2, '0');
+                                                            
+                                                            return (
+                                                                <button
+                                                                    key={t}
+                                                                    onClick={() => setCurrentTimeIndex(globalIdx)}
+                                                                    className={`px-3 py-2 rounded text-sm font-semibold transition-colors ${
+                                                                        isActive 
+                                                                            ? 'bg-blue-600 text-white shadow-md' 
+                                                                            : 'bg-white/60 text-gray-700 hover:bg-white/80'
+                                                                    }`}
+                                                                >
+                                                                    {hourLabel}
+                                                                </button>
+                                                            );
+                                                        })}
+                                                    </div>
+                                                </div>
                                             );
                                         })}
                                     </div>

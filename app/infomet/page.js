@@ -203,7 +203,7 @@ const Display = () => {
             </p>
             <p className="text-gray-400 mb-2">Required screen size:</p>
             <p className="text-lg font-mono text-green-400">
-              Width: 1880 - 1950 pixels<br />
+              Width: 1850 - 1950 pixels<br />
               Height: 1020 - 1150 pixels
             </p>
           </div>

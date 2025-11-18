@@ -185,11 +185,11 @@ const WeatherPage = ({ theme, list }) => {
                     <div className='flex justify-around items-center'>
                         <div className="w-1/6 flex flex-col items-center justify-center align-middle">
                             <WeatherIcon condition={displayForecast.weather} size={90}/>
-                            <p className={`text-2xl font-bold text-slate-800 text-center ${theme.text.primary}`}>{displayForecast.weather}</p>
+                            <p className={`text-2xl font-semibold text-slate-800 text-center ${theme.text.primary}`}>{displayForecast.weather}</p>
                         </div>
                         <div className="flex flex-col space-y-6 border-l border-gray-300 pr-2">
                             <div className="grid grid-cols-3 gap-4">
-                                <InfoRow icon={Thermometer} label="Suhu" sub={"Udara"} value={`${displayForecast.temp_avg}°C`} big theme={theme}/>
+                                <InfoRow icon={Thermometer} label="Suhu" sub={"Udara"} value={`${displayForecast.temp_avg}°C`} big theme={theme} iconColor="text-red-500"/>
                                 <InfoRow 
                                     icon={Wind} 
                                     label="Angin" 

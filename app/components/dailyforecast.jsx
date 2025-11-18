@@ -2,11 +2,11 @@
 import WeatherIcon from './weather-icon';
 import { Wind, Waves } from 'lucide-react';
 const DailyForecastItem = ({ day, condition, tempMax, tempMin, theme, wave, wind }) => (
-  <div className={`flex items-center justify-between p-3 border-b ${theme.border} last:border-b-0 text-lg`}>
+  <div className={`flex items-center justify-between p-3 last:border-b-0 text-lg`}>
     <span className={`${theme.text.secondary} font-medium`}>{day}</span>
     <div className={`flex flex-row items-center gap-3 ${theme.text.primary}`}>
       <div className=''>
-        <WeatherIcon condition={condition} size={60}/>
+        <WeatherIcon condition={condition} size={100}/>
       </div>
       <div className='flex flex-col'>
         <p className='text-red-800 font-medium'>{tempMax}</p>

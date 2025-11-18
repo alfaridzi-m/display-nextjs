@@ -77,6 +77,9 @@ const PortPage = ({ theme, portEndPoints }) => {
         let maxWindGust = dailyForecasts[0].wind_gust;
         let waveCategoryForMax = dailyForecasts[0].wave_cat;
 
+        // Track wind direction frequency
+        const windDirectionCount = {};
+        
         dailyForecasts.forEach(forecast => {
             if ((weatherSeverity[forecast.weather] || weatherSeverity.default) > (weatherSeverity[worstWeather] || weatherSeverity.default)) {
                 worstWeather = forecast.weather;
@@ -89,7 +92,22 @@ const PortPage = ({ theme, portEndPoints }) => {
             }
             minWave = Math.min(minWave, forecast.wave_height);
             maxWindGust = Math.max(maxWindGust, forecast.wind_gust);
+            
+            // Count wind direction occurrences
+            const windDir = forecast.wind_from;
+            windDirectionCount[windDir] = (windDirectionCount[windDir] || 0) + 1;
+            console.log('Wind Direction Count:', windDirectionCount);
         });
+
+        // Find most common wind direction (modus)
+        let mostCommonWindDir = dailyForecasts[0].wind_from;
+        let maxCount = 0;
+        for (const [direction, count] of Object.entries(windDirectionCount)) {
+            if (count > maxCount) {
+                maxCount = count;
+                mostCommonWindDir = direction;
+            }
+        }
 
         return {
             name: port.name.replace('Pelabuhan ', ''),
@@ -98,7 +116,7 @@ const PortPage = ({ theme, portEndPoints }) => {
             conditionText: worstWeather,
             windSpeed: dailyForecasts[0].wind_speed,
             windGust: maxWindGust,
-            windDirection: windDirectionToDegrees(dailyForecasts[0].wind_from),
+            windDirection: windDirectionToDegrees(mostCommonWindDir),
             waveRange: `${minWave} - ${maxWave} m`,
             waveCategory: waveCategoryForMax,
         };
