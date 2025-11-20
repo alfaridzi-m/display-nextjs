@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Wind, Droplets, Compass, Activity, Thermometer, Waves, Navigation, Navigation2 } from 'lucide-react';
+import Image from 'next/image';
 import WeatherIcon from './weather-icon';
 import axios from 'axios';
 import TidesCard from './tides-chart';
@@ -216,8 +217,36 @@ const WeatherPage = ({ theme, list }) => {
                             </div>
                             <div className="grid grid-cols-3 gap-4 border-t border-gray-300 pt-4">
                                 <InfoRow icon={Droplets} label="Kelembapan" value={`${displayForecast.rh_avg}%`} sub="Rata-rata" theme={theme}/>
-                                <InfoRow icon={Compass} label="Arus" value={displayForecast.current_to} sub={`${displayForecast.current_speed} cm/s`} theme={theme}/>
-                                <InfoRow icon={Activity} label="Pasang" value={`${displayForecast.tides} m`} sub="Perkiraan" theme={theme}/>
+                                <InfoRow 
+                                    icon={Compass} 
+                                    label="Arus" 
+                                    value={displayForecast.current_to} 
+                                    sub={`${displayForecast.current_speed} cm/s`} 
+                                    theme={theme}
+                                    customIcon={
+                                        <Image 
+                                            src="/icon/current.svg" 
+                                            alt="Current" 
+                                            width={32} 
+                                            height={32}
+                                        />
+                                    }
+                                />
+                                <InfoRow 
+                                    icon={Activity} 
+                                    label="Pasang" 
+                                    value={`${displayForecast.tides} m`} 
+                                    sub="Perkiraan" 
+                                    theme={theme}
+                                    customIcon={
+                                        <Image 
+                                            src="/icon/msl.svg" 
+                                            alt="MSL" 
+                                            width={32} 
+                                            height={32}
+                                        />
+                                    }
+                                />
                             </div>
                         </div>
                     </div>
