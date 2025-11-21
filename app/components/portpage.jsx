@@ -57,7 +57,7 @@ const PortPage = ({ theme, portEndPoints }) => {
         const totalPages = Math.ceil(portData.length / portsPerPage);
         const timer = setInterval(() => {
             setCurrentPage(prevPage => (prevPage + 1) % totalPages);
-        }, 15000); // Ganti halaman setiap 15 detik
+        }, 10000); // Ganti halaman setiap 10 detik
 
         return () => clearInterval(timer);
     }, [isLoading, portData, portsPerPage]);

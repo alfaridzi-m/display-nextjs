@@ -31,10 +31,10 @@ const Display = () => {
   const [configLoaded, setConfigLoaded] = useState(false);
   
   const pageDurations = {
-    weather: 1500000 * portIds.length,
-    cities: 300000,
-    Perairan: 1500000,
-    Peta: 6000000,
+    weather: 16000 * portIds.length,
+    cities: 60000,
+    Perairan: 60000,
+    Peta: 20000,
   }
   const [activePage, setActivePage] = useState(pages[0]);
   const [isDarkMode, setIsDarkMode] = useState(false);
@@ -97,6 +97,15 @@ const Display = () => {
     checkScreenSize();
     window.addEventListener('resize', checkScreenSize);
     return () => window.removeEventListener('resize', checkScreenSize);
+  }, []);
+
+  // Auto-reload every 10 minutes
+  useEffect(() => {
+    const reloadInterval = setInterval(() => {
+      window.location.reload();
+    }, 600000); // 10 minutes in milliseconds
+
+    return () => clearInterval(reloadInterval);
   }, []);
 
   const handleNavClick = (page) => {

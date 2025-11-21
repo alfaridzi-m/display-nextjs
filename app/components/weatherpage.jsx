@@ -79,7 +79,7 @@ const WeatherPage = ({ theme, list }) => {
         if (portData.length > 1) {
             const timer = setInterval(() => {
                 setActivePortIndex(prevIndex => (prevIndex + 1) % portData.length);
-            }, 15000); // Ganti setiap 15 detik
+            }, 8000); // Ganti setiap 5 detik
             return () => clearInterval(timer);
         }
     }, [portData]);
