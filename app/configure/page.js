@@ -124,7 +124,7 @@ export default function ConfigurePage() {
     
       if (result.success) {
         try {
-          localStorage.setItem('displayConfigId', configObject.id);
+          localStorage.setItem('infometId', configObject.id);
         } catch (storageError) {
           console.warn('Failed to save config ID to localStorage:', storageError);
         }
@@ -583,10 +583,10 @@ export default function ConfigurePage() {
           setShowPreview={setShowPreview}
           handleSaveToAPI={handleSaveToAPI}
           handleUpdateToAPI={handleUpdateToAPI}
-          handleLoadAllConfigs={handleLoadAllConfigs}
+          // handleLoadAllConfigs={handleLoadAllConfigs}
         />
 
-        {/* Preview JSON - Collapsible */}
+        {/* Preview JSON - Collapsible
         <section className="mt-8">
           <details className="bg-gray-800/50 backdrop-blur-sm rounded-2xl shadow-2xl border border-white/10 overflow-hidden">
             <summary className="cursor-pointer p-6 hover:bg-gray-700/30 transition-colors">
@@ -603,7 +603,7 @@ export default function ConfigurePage() {
               </pre>
             </div>
           </details>
-        </section>
+        </section> */}
       </div>
       <ToastContainer toasts={toasts} onRemove={removeToast} />
     </div>

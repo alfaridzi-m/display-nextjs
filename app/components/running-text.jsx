@@ -80,7 +80,7 @@ function RunningText({ theme, speed = 90 /* px per second */, gap = 10, pauseOnH
       `}</style>
       
       <div
-        className={`fixed bottom-20 md:bottom-0 left-0 w-full h-10 flex items-center z-20 ${theme.sidebar} backdrop-blur-xl overflow-hidden ${pauseOnHover ? 'pause-on-hover' : ''}`}
+        className={`fixed bottom-20 md:bottom-0 left-0 w-full h-10 flex items-center z-20 bg-white/50 backdrop-blur-xl overflow-hidden ${pauseOnHover ? 'pause-on-hover' : ''}`}
         role="status"
         aria-live="polite"
       >

@@ -59,7 +59,7 @@ export default function ConfigSelectPage() {
       
       if (result.success) {
         // Store the ID in localStorage
-        localStorage.setItem('displayConfigId', selectedConfigId);
+        localStorage.setItem('infometId', selectedConfigId);
         
         // Redirect to home page
         router.push('/infomet');

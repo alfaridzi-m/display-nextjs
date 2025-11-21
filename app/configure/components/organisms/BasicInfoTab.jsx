@@ -24,7 +24,7 @@ export const BasicInfoTab = ({ formData, idValidation, handleInputChange }) => {
             pattern="[a-zA-Z0-9]+"
             title="Hanya huruf dan angka (tanpa spasi atau karakter khusus)"
             helpText={[
-              'Hanya huruf dan angka, tanpa spasi atau karakter khusus. ID akan terdaftar ke Server dan localStorage dengan key <code class="bg-red-700 px-1 rounded">displayConfigId</code>',
+              'Hanya huruf dan angka, tanpa spasi atau karakter khusus. ID akan terdaftar ke Server dan localStorage dengan key <code class="bg-red-700 px-1 rounded">infometId</code>',
               '<code class="bg-red-700 px-1 rounded animate-pulse">Harap ID disimpan</code> agar tidak perlu melakukan konfigurasi berulang'
             ]}
           />

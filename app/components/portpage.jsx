@@ -138,11 +138,11 @@ const PortPage = ({ theme, portEndPoints }) => {
                             if (!port || !port.valid_from) return null;
 
                             return (
-                                <div key={port.code} className={`p-1 rounded-2xl`} style={{animationDelay: `${portIndex * 100}ms`}}>
-                                    <p className={`text-xl font-bold ${theme.text.primary} p-1 text-center ${theme.glassCardClass} rounded-xl mb-1`}>
+                                <div key={port.code} className={`p-2 rounded-2xl shadow-xl shadow-grey-700 backdrop-blur-lg`} style={{animationDelay: `${portIndex * 100}ms`}}>
+                                    <p className={`text-xl font-bold ${theme.text.primary} p-1 text-center bg-white/70 border-white/40 shadow-md rounded-xl mb-1`}>
                                         {port.name}
                                     </p>
-                                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-1">
                                         {dayLabels.map((label, dayIndex) => {
                                             const startDate = new Date(port.valid_from);
                                             const targetDate = new Date(startDate);

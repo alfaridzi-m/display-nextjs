@@ -55,7 +55,7 @@ export const ActionButtons = ({
           </div>
         </button>
 
-        {/* View All Configs */}
+        {/* View All Configs
         <button 
           type="button" 
           onClick={handleLoadAllConfigs} 
@@ -69,7 +69,7 @@ export const ActionButtons = ({
             <div>Lihat Semua Konfigurasi</div>
             <div className="text-xs opacity-80">Daftar tersimpan</div>
           </div>
-        </button>
+        </button> */}
       </div>
     </section>
   );

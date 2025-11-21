@@ -46,7 +46,7 @@ const Display = () => {
   useEffect(() => {
     const loadConfiguration = async () => {
       try {
-        const configId = localStorage.getItem('displayConfigId');
+        const configId = localStorage.getItem('infometId');
         if (!configId) {
           console.log('No configuration ID found');
           router.push('/config-select');

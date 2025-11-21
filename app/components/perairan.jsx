@@ -356,7 +356,7 @@ const PerairanPage = ({
                     </div>
                 </div>
 
-                <p class="text-[13px] font-semibold text-white w-full text-center rounded-sm mb-1" style="background-color: ${waveColor};">${forecast.wave_cat}</p>
+                <p class="text-[13px] font-semibold text-black w-full text-center rounded-sm mb-1" style="background-color: ${waveColor};">${forecast.wave_cat}</p>
             </div>
         `;
     }, []);

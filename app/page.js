@@ -32,7 +32,7 @@ const Home = () => {
           
           <button
             onClick={handleSisfometClick}
-            className="px-8 py-4 bg-indigo-600 hover:bg-indigo-700 text-white text-xl font-semibold rounded-lg shadow-lg transition-all duration-300 transform hover:scale-105 min-w-[200px]"
+            className="px-8 py-4 bg-green-600 hover:bg-green-700 text-white text-xl font-semibold rounded-lg shadow-lg transition-all duration-300 transform hover:scale-105 min-w-[200px]"
           >
             Sisfomet
           </button>

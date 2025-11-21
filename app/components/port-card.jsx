@@ -15,7 +15,7 @@ const getWaveColor = (category) => {
 };
 
 const PortCard = ({dayLabel , tempMin, tempMax, conditionText, windSpeed, windGust, windDirection, waveRange, waveCategory, theme }) => (
-    <div className={`${theme.glassCardClass} p-5 flex flex-col h-[260px] w-[280px]`}>
+    <div className={`bg-white/70 border-white/20 shadow-sm rounded-3xl p-5 flex flex-col h-[260px] w-[280px]`}>
         <div>
             <p className={`${theme.text.primary} text-xl font-bold`}>{dayLabel}</p>
         </div>
@@ -43,7 +43,7 @@ const PortCard = ({dayLabel , tempMin, tempMax, conditionText, windSpeed, windGu
             </div>
         </div>
 
-        <div className={` border-t ${theme.border} flex items-center justify-center space-x-3`}>
+        <div className={` border-t ${theme.border} flex items-center justify-center space-x-3 pt-2`}>
             <Waves className="w-5 h-5 text-cyan-500" />
             <div className={`w-4 h-4 rounded-full ${getWaveColor(waveCategory)}`}></div>
             <span className={`font-semibold text-sm ${theme.text.primary}`}>{waveCategory}</span>

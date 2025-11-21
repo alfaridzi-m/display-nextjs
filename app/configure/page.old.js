@@ -462,7 +462,7 @@ export default function ConfigurePage() {
       if (result.success) {
         // Save the ID to localStorage
         try {
-          localStorage.setItem('displayConfigId', configObject.id);
+          localStorage.setItem('infometId', configObject.id);
           console.log('Config ID saved to localStorage:', configObject.id);
         } catch (storageError) {
           console.warn('Failed to save config ID to localStorage:', storageError);
@@ -985,7 +985,7 @@ export default function ConfigurePage() {
               )}
               {!formData.id && (
                 <div className="pl-4">
-                  <li className="text-xs text-white mt-1">Hanya huruf dan angka, tanpa spasi atau karakter khusus. ID akan terdaftar ke Server dan localStorage dengan key <code className="bg-red-700 px-1 rounded">displayConfigId</code></li>
+                  <li className="text-xs text-white mt-1">Hanya huruf dan angka, tanpa spasi atau karakter khusus. ID akan terdaftar ke Server dan localStorage dengan key <code className="bg-red-700 px-1 rounded">infometId</code></li>
                   <li className="text-xs text-white mt-1"><code className="bg-red-700 px-1 rounded animate-pulse">Harap ID disimpan</code> agar tidak perlu melakukan konfigurasi berulang</li>
                 </div>
               )}
