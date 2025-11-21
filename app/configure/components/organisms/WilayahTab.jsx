@@ -104,14 +104,30 @@ export const WilayahTab = ({
           <Icon name="settings" className="h-6 w-6" />
           Pengaturan Tampilan Perairan
         </h3>
-        <p className="text-sm text-gray-400 mb-4">
-          Atur posisi label dan Titik garis.
-        </p>
-
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-1">
           <h2 className="lg:col-span-2 text-md font-semibold text-gray-300 mb-2 mt-4 lg:mt-0">
-            Mengatur Posisi Label dan garis penghubung
+            Mengatur Posisi Label dan Titik Lingkaran
           </h2>
+          
+          {/* Header with Switch */}
+          <div className="lg:col-span-2 flex items-center gap-2 mb-2">
+            <h3 className="text-md font-semibold text-white bg-gradient-to-r from-amber-600 to-amber-700 w-fit p-1 px-3 rounded-lg">
+              Klik tombol di samping untuk menampilakan label
+            </h3>
+            <label className="relative inline-flex items-center cursor-pointer">
+              <input
+                type="checkbox"
+                checked={enableLabelConfig}
+                onChange={(e) => {
+                  setEnableLabelConfig(e.target.checked);
+                  setEnableConnectorConfig(e.target.checked);
+                }}
+                disabled={!formData.wilayahAktif || formData.wilayahAktif.length === 0}
+                className="sr-only peer"
+              />
+              <div className="w-11 h-6 bg-green-700 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-800 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600 peer-disabled:opacity-50 peer-disabled:cursor-not-allowed"></div>
+            </label>
+          </div>
           
           {/* Position Configs Side by Side */}
           <div className="lg:col-span-2 grid grid-cols-1 lg:grid-cols-2 gap-4">
@@ -149,27 +165,9 @@ const LabelPositionConfig = ({
 }) => (
   <div className="bg-gray-800/30 rounded-lg p-4 border border-gray-700/50">
     <div className="flex items-center justify-between mb-3">
-      <label className="flex items-center gap-2 cursor-pointer">
-        <input
-          type="checkbox"
-          checked={enableLabelConfig}
-          onChange={(e) => setEnableLabelConfig(e.target.checked)}
-          disabled={!formData.wilayahAktif || formData.wilayahAktif.length === 0}
-          className="w-4 h-4 text-blue-600 bg-gray-700 border-gray-600 rounded focus:ring-blue-500 focus:ring-2"
-        />
-        <span className="text-sm font-medium text-gray-300">
-          Konfigurasi Posisi Label Individual
-        </span>
-      </label>
-      {enableLabelConfig && formData.wilayahAktif?.length > 0 && (
-        <button
-          type="button"
-          onClick={fillDummyLabelPositions}
-          className="px-3 py-1 text-xs bg-blue-600 hover:bg-blue-700 text-white rounded transition-colors"
-        >
-          Isi Data Contoh
-        </button>
-      )}
+      <span className="text-sm font-medium text-gray-300">
+        Konfigurasi Posisi Label Individual
+      </span>
     </div>
     
     {!formData.wilayahAktif || formData.wilayahAktif.length === 0 ? (
@@ -177,7 +175,7 @@ const LabelPositionConfig = ({
     ) : enableLabelConfig ? (
       <div>
         <p className="text-xs text-white bg-red-900 rounded-sm mb-1 animate-pulse w-fit p-1">Drag label di map</p>
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-2 xl:grid-cols-3 gap-2 max-h-80 overflow-y-auto p-1">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2 max-h-80 overflow-y-auto p-1">
           {formData.wilayahAktif.map((wilayahId) => (
             <PositionInput
               key={wilayahId}
@@ -200,7 +198,7 @@ const LabelPositionConfig = ({
         </div>
       </div>
     ) : (
-      <p className="text-xs text-gray-500 italic">Centang kotak di atas untuk menampilkan posisi label</p>
+      <p className="text-xs text-gray-500 italic">Klik tombol di atas untuk mengaktifkan konfigurasi posisi label</p>
     )}
   </div>
 );
@@ -215,27 +213,9 @@ const ConnectorPositionConfig = ({
 }) => (
   <div className="bg-gray-800/30 rounded-lg p-4 border border-gray-700/50">
     <div className="flex items-center justify-between mb-3">
-      <label className="flex items-center gap-2 cursor-pointer">
-        <input
-          type="checkbox"
-          checked={enableConnectorConfig}
-          onChange={(e) => setEnableConnectorConfig(e.target.checked)}
-          disabled={!formData.wilayahAktif || formData.wilayahAktif.length === 0}
-          className="w-4 h-4 text-blue-600 bg-gray-700 border-gray-600 rounded focus:ring-blue-500 focus:ring-2"
-        />
-        <span className="text-sm font-medium text-gray-300">
-          Konfigurasi Posisi Awal Konektor
-        </span>
-      </label>
-      {enableConnectorConfig && formData.wilayahAktif?.length > 0 && (
-        <button
-          type="button"
-          onClick={fillDummyConnectorPositions}
-          className="px-3 py-1 text-xs bg-blue-600 hover:bg-blue-700 text-white rounded transition-colors"
-        >
-          Isi Data Contoh
-        </button>
-      )}
+      <span className="text-sm font-medium text-gray-300">
+        Konfigurasi Posisi Titik Lingkaran
+      </span>
     </div>
     
     {!formData.wilayahAktif || formData.wilayahAktif.length === 0 ? (
@@ -243,7 +223,7 @@ const ConnectorPositionConfig = ({
     ) : enableConnectorConfig ? (
       <div>
         <p className="text-xs text-white bg-red-900 rounded-sm mb-1 animate-pulse w-fit p-1">Drag titik di map</p>
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-2 xl:grid-cols-3 gap-2 max-h-80 overflow-y-auto p-1">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2 max-h-80 overflow-y-auto p-1">
           {formData.wilayahAktif.map((wilayahId) => (
             <PositionInput
               key={wilayahId}
@@ -266,7 +246,7 @@ const ConnectorPositionConfig = ({
         </div>
       </div>
     ) : (
-      <p className="text-xs text-gray-500 italic">Centang kotak di atas untuk mengaktifkan konfigurasi posisi konektor</p>
+      <p className="text-xs text-gray-500 italic">Klik tombol di atas untuk mengaktifkan konfigurasi posisi Titik</p>
     )}
   </div>
 );
@@ -292,8 +272,10 @@ const PositionInput = ({ wilayahId, position, onPositionChange, onReset }) => (
           step="0.0001"
           value={position?.lat || ''}
           onChange={(e) => onPositionChange(Number(e.target.value), position?.lng || 0)}
-          className="w-full bg-gray-700 border border-gray-600 rounded px-1.5 py-1 text-xs focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+          className="w-full bg-gray-700 border border-gray-600 rounded px-1.5 py-1 text-xs focus:ring-1 focus:ring-blue-500 focus:border-blue-500 cursor-not-allowed opacity-60 hover:opacity-60"
           placeholder="Auto"
+          disabled
+          readOnly
         />
       </div>
       <div>
@@ -303,8 +285,10 @@ const PositionInput = ({ wilayahId, position, onPositionChange, onReset }) => (
           step="0.0001"
           value={position?.lng || ''}
           onChange={(e) => onPositionChange(position?.lat || 0, Number(e.target.value))}
-          className="w-full bg-gray-700 border border-gray-600 rounded px-1.5 py-1 text-xs focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+          className="w-full bg-gray-700 border border-gray-600 rounded px-1.5 py-1 text-xs focus:ring-1 focus:ring-blue-500 focus:border-blue-500 cursor-not-allowed opacity-60 hover:opacity-60"
           placeholder="Auto"
+          disabled
+          readOnly
         />
       </div>
     </div>
