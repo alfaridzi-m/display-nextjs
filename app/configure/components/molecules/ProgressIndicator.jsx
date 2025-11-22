@@ -23,8 +23,8 @@ export const ProgressIndicator = ({ formData }) => {
 
   return (
     <div className="bg-gradient-to-r from-blue-900/30 to-purple-900/30 border border-blue-500/30 rounded-lg p-4">
-      <h3 className="text-sm font-semibold text-blue-300 mb-3">Progress Konfigurasi</h3>
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+      <h3 className="text-2xl font-semibold text-blue-300 mb-3">Progress Konfigurasi</h3>
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
         {steps.map((step, index) => (
           <div 
             key={index}
@@ -38,7 +38,7 @@ export const ProgressIndicator = ({ formData }) => {
               name={step.completed ? 'check' : 'circle'} 
               color={step.completed ? '#4ade80' : '#6b7280'} 
             />
-            <span className="text-xs">{step.label}</span>
+            <span className="text-xl">{step.label}</span>
           </div>
         ))}
       </div>

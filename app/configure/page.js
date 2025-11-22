@@ -312,6 +312,7 @@ export default function ConfigurePage() {
                   yourLocation={configObject.map_settings.your_location}
                   labelPosition={configObject.perairan_settings?.label_position}
                   individualPositions={configObject.perairan_settings?.individual_positions}
+                  connectorStartPositions={configObject.perairan_settings?.connector_start_positions}
                 />
               </div>
               <div style={{ display: previewPage === 'Peta' ? 'block' : 'none' }}>
@@ -346,14 +347,19 @@ export default function ConfigurePage() {
             >
               Kembali
             </Button>
-            <Button
-              variant="primary"
-              onClick={() => setShowLoadModal(true)}
-              icon={<Icon name="upload" />}
-              className="border border-cyan-500/30"
-            >
-              Load ID
-            </Button>
+            <div className="relative group">
+              <Button
+                variant="primary"
+                onClick={() => setShowLoadModal(true)}
+                icon={<Icon name="upload" />}
+                className="border border-cyan-500/30"
+              >
+                Load ID
+              </Button>
+              <div className="absolute left-0 top-full mt-2 w-64 p-3 bg-gray-800 border border-cyan-500/30 rounded-lg shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
+                <p className="text-xs text-gray-300">Untuk memuat konfigurasi yang sudah disimpan sebelumnya.</p>
+              </div>
+            </div>
           </div>
         </header>
 
