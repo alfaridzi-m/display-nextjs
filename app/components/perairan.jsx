@@ -624,9 +624,9 @@ const PerairanPage = ({
                 zoomDelta: 0.1             // Zoom in/out by 0.1 increments
             }).setView(viewPoint, initialZoom);
             
-            L.tileLayer('https://tiles.stadiamaps.com/tiles/alidade_smooth_dark/{z}/{x}/{y}{r}.{ext}', {
-                attribution: '&copy; <a href="https://www.stadiamaps.com/" target="_blank">Stadia Maps</a> &copy; <a href="https://openmaptiles.org/" target="_blank">OpenMapTiles</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-                ext: 'png'
+            L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png', {
+                maxZoom: 19,
+                attribution: '&copy; CARTO & OpenStreetMap contributors'
             }).addTo(mapRef.current);
             L.marker(yourLocation, { icon: redIcon }).addTo(mapRef.current);
 
