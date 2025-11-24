@@ -46,7 +46,6 @@ const getWindDirectionAngle = (direction) => {
   return directionMap[direction] || 0;
 };
 
-// PINDAH: Ekstrak logika fetching dan parsing data ke fungsi terpisah di luar komponen
 async function fetchAndProcessForecasts(wilayahAktif, baseUrl = 'https://maritim.bmkg.go.id/marine-data/perairan/') {
     try {
         const lookup = {};
