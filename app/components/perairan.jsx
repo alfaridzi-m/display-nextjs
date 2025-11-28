@@ -117,13 +117,31 @@ async function fetchAndProcessForecasts(wilayahAktif, baseUrl = 'https://maritim
     }
 }
 
-// Ringkas prakiraan per 6 jam dengan aturan baru:
-// Day 0 (Hari ini): 00 UTC = point data only, 06/12/18 UTC = 6-hour window
-// Day 1 & 2 (Besok & Lusa): All timesteps (00/06/12/18 UTC) = 6-hour window
-function summarizeForecastsEvery6Hours(forecastData) {
+// Severity ranking untuk cuaca – digunakan untuk memilih cuaca "paling buruk" dalam 1 hari
+const WEATHER_SEVERITY = {
+    'Cerah': 1,
+    'Cerah Berawan': 2,
+    'Berawan': 3,
+    'Berawan Tebal': 4,
+    'Kabut': 4,
+    'Udara Kabur': 5,
+    'Petir': 6,
+    'Hujan Ringan': 7,
+    'Hujan Sedang': 8,
+    'Hujan Lebat': 9,
+    'Hujan Petir': 10,
+    'unknown': 0
+};
+
+// Ringkas prakiraan per HARI (Hari ini, Besok, Lusa)
+// - Angin: kecepatan minimum - maksimum dalam 1 hari
+// - Arah angin: modus (arah yang paling sering muncul)
+// - Gelombang: tinggi maksimum dalam 1 hari
+// - Cuaca: cuaca paling buruk (severity tertinggi)
+function summarizeForecastsByDay(forecastData) {
     const summaries = {};
     const allBuckets = new Set();
-    
+
     // Use UTC-based date calculations
     const now = new Date();
     const today = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
@@ -131,81 +149,119 @@ function summarizeForecastsEvery6Hours(forecastData) {
     tomorrow.setUTCDate(tomorrow.getUTCDate() + 1);
     const dayAfterTomorrow = new Date(today);
     dayAfterTomorrow.setUTCDate(dayAfterTomorrow.getUTCDate() + 2);
-    
-    // Define 6-hour timesteps for each day: 00, 06, 12, 18 UTC
-    const timesteps = [0, 6, 12, 18];
+
     const days = [
         { date: today, label: 'today' },
         { date: tomorrow, label: 'tomorrow' },
         { date: dayAfterTomorrow, label: 'dayAfterTomorrow' }
     ];
-    
+
     for (const regionId in forecastData) {
         const arr = forecastData[regionId] || [];
         summaries[regionId] = {};
-        
-        // Process each day and timestep
-        for (const { date, label } of days) {
-            for (const hour of timesteps) {
-                const bucketTime = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate(), hour, 0, 0));
-                const key = bucketTime.toISOString();
-                allBuckets.add(key);
-                
-                summaries[regionId][key] = { count: 0, maxWave: 0, categories: {}, forecasts: [] };
-                
-                // Determine which forecasts to include based on rules
-                let forecastsToInclude = [];
-                
-                if (label === 'today' && hour === 0) {
-                    // Day 0, 00 UTC: use point data only (exact 00 UTC record)
-                    const exactMatch = arr.find(f => {
-                        const fTime = new Date(f.time);
-                        return fTime.getUTCFullYear() === date.getUTCFullYear() &&
-                               fTime.getUTCMonth() === date.getUTCMonth() &&
-                               fTime.getUTCDate() === date.getUTCDate() &&
-                               fTime.getUTCHours() === 0;
-                    });
-                    if (exactMatch) {
-                        forecastsToInclude.push(exactMatch);
+
+        for (const { date } of days) {
+            // Bucket key = 00 UTC untuk hari tersebut
+            const bucketTime = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate(), 0, 0, 0));
+            const key = bucketTime.toISOString();
+            allBuckets.add(key);
+
+            const bucket = {
+                count: 0,
+                maxWave: 0,
+                maxWaveCat: 'unknown',
+                minWindSpeed: Infinity,
+                maxWindSpeed: 0,
+                windDirectionCounts: {},
+                severeWeatherForecast: null,
+                forecasts: []
+            };
+
+            // Waktu 1 hari: [00:00, 24:00) UTC
+            const dayStart = new Date(bucketTime);
+            const dayEnd = new Date(bucketTime);
+            dayEnd.setUTCDate(dayEnd.getUTCDate() + 1);
+
+            for (const f of arr) {
+                const fTime = new Date(f.time);
+                if (fTime >= dayStart && fTime < dayEnd) {
+                    bucket.count += 1;
+                    bucket.forecasts.push(f);
+
+                    // Gelombang maksimum
+                    const waveHeight = f.wave_height || 0;
+                    if (waveHeight > bucket.maxWave) {
+                        bucket.maxWave = waveHeight;
+                        bucket.maxWaveCat = f.wave_cat || 'unknown';
                     }
-                } else {
-                    // All other cases: 6-hour summary window
-                    const windowStart = new Date(bucketTime);
-                    windowStart.setUTCHours(windowStart.getUTCHours() - 6);
-                    
-                    // For 6-hour window: include forecasts from (bucketTime - 6 hours) up to and including bucketTime
-                    forecastsToInclude = arr.filter(f => {
-                        const fTime = new Date(f.time);
-                        return fTime > windowStart && fTime <= bucketTime;
-                    });
-                    
-                    // Debug logging for empty buckets
-                    if (forecastsToInclude.length === 0) {
-                        console.log(`No forecasts found for ${regionId} at ${key}. Window: ${windowStart.toISOString()} to ${bucketTime.toISOString()}`);
-                        console.log(`Available times:`, arr.map(f => new Date(f.time).toISOString()).slice(0, 5));
+
+                    // Kecepatan angin minimum dan maksimum
+                    const windSpeed = f.wind_speed || 0;
+                    if (windSpeed < bucket.minWindSpeed) {
+                        bucket.minWindSpeed = windSpeed;
                     }
-                }
-                
-                // Aggregate the forecasts
-                const s = summaries[regionId][key];
-                for (const f of forecastsToInclude) {
-                    s.count += 1;
-                    s.maxWave = Math.max(s.maxWave, f.wave_height || 0);
-                    s.categories[f.wave_cat || 'unknown'] = (s.categories[f.wave_cat || 'unknown'] || 0) + 1;
-                    s.forecasts.push(f);
-                }
-                
-                // Log summary for debugging
-                if (forecastsToInclude.length > 0) {
-                    const bucketDate = new Date(key);
-                    console.log(`${regionId} ${bucketDate.getUTCDate()}/${bucketDate.getUTCMonth()+1} ${bucketDate.getUTCHours()}:00 - ${forecastsToInclude.length} forecasts, dominant: ${Object.keys(s.categories).reduce((a, b) => s.categories[a] > s.categories[b] ? a : b, 'unknown')}, maxWave: ${s.maxWave}m`);
+                    if (windSpeed > bucket.maxWindSpeed) {
+                        bucket.maxWindSpeed = windSpeed;
+                    }
+
+                    // Hitung frekuensi arah angin
+                    const dir = f.wind_from || 'unknown';
+                    bucket.windDirectionCounts[dir] = (bucket.windDirectionCounts[dir] || 0) + 1;
+
+                    // Cuaca paling buruk
+                    const currentSeverity = WEATHER_SEVERITY[f.weather] ?? 0;
+                    const existingSeverity = bucket.severeWeatherForecast
+                        ? (WEATHER_SEVERITY[bucket.severeWeatherForecast.weather] ?? 0)
+                        : -1;
+                    if (currentSeverity > existingSeverity) {
+                        bucket.severeWeatherForecast = f;
+                    }
                 }
             }
+
+            if (bucket.count === 0) {
+                summaries[regionId][key] = bucket;
+                continue;
+            }
+
+            // Modus arah angin
+            let modeDirection = 'unknown';
+            let maxCount = 0;
+            for (const dir in bucket.windDirectionCounts) {
+                if (bucket.windDirectionCounts[dir] > maxCount) {
+                    maxCount = bucket.windDirectionCounts[dir];
+                    modeDirection = dir;
+                }
+            }
+
+            // Forecast representatif 1 hari
+            const base = bucket.severeWeatherForecast || bucket.forecasts[0];
+            const minWind = bucket.minWindSpeed === Infinity ? 0 : bucket.minWindSpeed;
+            const representativeForecast = {
+                ...base,
+                wave_height: bucket.maxWave,
+                wave_cat: bucket.maxWaveCat,
+                wind_speed: bucket.maxWindSpeed,
+                wind_speed_min: minWind,
+                wind_speed_max: bucket.maxWindSpeed,
+                wind_from: modeDirection,
+                time: new Date(Date.UTC(
+                    bucketTime.getUTCFullYear(),
+                    bucketTime.getUTCMonth(),
+                    bucketTime.getUTCDate(),
+                    12, 0, 0
+                )).toISOString()
+            };
+
+            summaries[regionId][key] = {
+                ...bucket,
+                forecasts: [representativeForecast]
+            };
         }
     }
-    
+
     const timeSteps = Array.from(allBuckets).sort();
-    console.log(`Created ${timeSteps.length} timesteps for ${Object.keys(summaries).length} regions`);
+    console.log(`Created daily summaries (${timeSteps.length} days) for ${Object.keys(summaries).length} regions`);
     return { summaries, timeSteps };
 }
 
@@ -334,7 +390,11 @@ const PerairanPage = ({
                 >
                 <polygon points="12 2 19 21 12 17 5 21 12 2"></polygon>
                 </svg>
-                <span class="text-[14px] font-semibold text-gray-700">${forecast.wind_speed} kt</span>
+                <span class="text-[14px] font-semibold text-gray-700">${
+                    forecast.wind_speed_min !== undefined && forecast.wind_speed_max !== undefined && forecast.wind_speed_min !== forecast.wind_speed_max
+                        ? `${forecast.wind_speed_min} - ${forecast.wind_speed_max} kt`
+                        : `${forecast.wind_speed || 0} kt`
+                }</span>
                 </div>
                 <!-- Row 2: Wave Height -->
                 <p class="text-[13px] font-semibold text-gray-700  w-full text-center border-t-2 border-gray-300">Gelombang</p>
@@ -628,8 +688,8 @@ const PerairanPage = ({
                 setForecastData(forecastData);
                 setTimeSteps(timeSteps);
 
-                // Bangun ringkasan 6 jam
-                const { summaries, timeSteps: sixSteps } = summarizeForecastsEvery6Hours(forecastData);
+                // Bangun ringkasan harian (Hari ini, Besok, Lusa)
+                const { summaries, timeSteps: sixSteps } = summarizeForecastsByDay(forecastData);
                 setSixHourlySummary(summaries);
                 setSixHourlyTimeSteps(sixSteps);
                
@@ -857,41 +917,34 @@ const PerairanPage = ({
                         {!isLoading && sixHourlyTimeSteps.length > 0 && (
                             <div className="absolute bottom-2 left-1/2 -translate-x-1/2 z-[1000] pointer-events-auto">
                                 <div className="max-w-4xl mx-auto bg-white/70 backdrop-blur p-3 rounded-lg shadow-inner">
-                                    {/* New UI: Display time slots as |Hari ini|Besok|Lusa| with 0 6 12 18 for each */}
+                                    {/* UI ringkasan HARIAN: Hari ini, Besok, Lusa */}
                                     <div className="flex items-start gap-3">
-                                        {['Hari ini', 'Besok', 'Lusa'].map((dayLabel, dayIdx) => {
-                                            // Get the 4 timesteps for this day (indices: dayIdx*4 to dayIdx*4+3)
-                                            const dayTimeSteps = sixHourlyTimeSteps.slice(dayIdx * 4, dayIdx * 4 + 4);
-                                            
-                                            return (
-                                                <div key={dayLabel} className="flex flex-col items-center">
-                                                    <div className="text-sm font-bold mb-2 text-gray-800">{dayLabel}</div>
-                                                    <div className="flex gap-2">
-                                                        {dayTimeSteps.map((t, hourIdx) => {
-                                                            const globalIdx = dayIdx * 4 + hourIdx;
-                                                            const isActive = globalIdx === currentTimeIndex;
-                                                            const timeDate = new Date(t);
-                                                            // Convert UTC to local time (WIB: UTC+7)
-                                                            const hourLabel = timeDate.getHours().toString().padStart(2, '0');
-                                                            
-                                                            return (
-                                                                <button
-                                                                    key={t}
-                                                                    onClick={() => setCurrentTimeIndex(globalIdx)}
-                                                                    className={`px-3 py-2 rounded text-sm font-semibold transition-colors ${
-                                                                        isActive 
-                                                                            ? 'bg-blue-600 text-white shadow-md' 
-                                                                            : 'bg-white/60 text-gray-700 hover:bg-white/80'
-                                                                    }`}
-                                                                >
-                                                                    {hourLabel}
-                                                                </button>
-                                                            );
-                                                        })}
-                                                    </div>
-                                                </div>
-                                            );
-                                        })}
+                                        {['Hari ini', 'Besok', 'Lusa']
+                                            .slice(0, sixHourlyTimeSteps.length)
+                                            .map((dayLabel, idx) => {
+                                                const t = sixHourlyTimeSteps[idx];
+                                                const isActive = idx === currentTimeIndex;
+                                                const date = new Date(t);
+                                                const dayStr = date.toLocaleDateString('id-ID', {
+                                                    day: '2-digit',
+                                                    month: 'short'
+                                                });
+
+                                                return (
+                                                    <button
+                                                        key={t}
+                                                        onClick={() => setCurrentTimeIndex(idx)}
+                                                        className={`flex flex-col items-center px-4 py-2 rounded text-sm font-semibold transition-colors ${
+                                                            isActive
+                                                                ? 'bg-blue-600 text-white shadow-md'
+                                                                : 'bg-white/60 text-gray-700 hover:bg-white/80'
+                                                        }`}
+                                                    >
+                                                        <span className="text-xs text-gray-700">{dayStr}</span>
+                                                        <span className="text-sm font-bold">{dayLabel}</span>
+                                                    </button>
+                                                );
+                                            })}
                                     </div>
                                 </div>
                             </div>

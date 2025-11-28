@@ -16,7 +16,7 @@ import BookPage from '../components/bookpage';
 
 const Display = () => {
   const router = useRouter();
-  const pages = ['weather', 'cities', 'Perairan', 'Peta', 'book'];
+  const pages = ['book', 'weather', 'cities', 'Perairan', 'Peta'];
   
   const [portIds, setPortIds] = useState([]);
   const [portEndPoints, setPortEndPoints] = useState([]);
@@ -32,8 +32,8 @@ const Display = () => {
   const [configLoaded, setConfigLoaded] = useState(false);
   
   const pageDurations = {
-    book : 20000,
-    weather: 16000 * portIds.length,
+    book : 10000,
+    weather: Math.max(16000, 16000 * portIds.length),
     cities: 60000,
     Perairan: 60000,
     Peta: 20000,
@@ -119,13 +119,15 @@ const Display = () => {
     if (!configLoaded) return;
     
     const duration = pageDurations[activePage];
+    console.log(`Active page: ${activePage}, Duration: ${duration}ms`);
     const timer = setTimeout(() => {
       const currentIndex = pages.indexOf(activePage)
       const nextIndex = (currentIndex + 1) % pages.length;
+      console.log(`Advancing from ${activePage} to ${pages[nextIndex]}`);
       setActivePage(pages[nextIndex]);
     }, duration);
     return () => clearTimeout(timer);
-  }, [activePage, configLoaded]); // Reset timer on manual click or config load
+  }, [activePage, configLoaded, portIds.length]); // Reset timer on manual click or config load
 
   // Don't render until configuration is loaded
   if (!configLoaded) {
