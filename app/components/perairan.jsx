@@ -285,21 +285,19 @@ const PerairanPage = ({
 
     // Weather icon mapping - moved outside for reuse
     const weatherIcons = {
-        'Cerah': '/icon/cerah.json',
-        'Cerah Berawan': '/icon/cerah-berawan.json',
-        'Berawan': '/icon/berawan.json',
-        'Berawan Tebal': '/icon/berawan-tebal.json',
-        'Hujan Ringan': '/icon/hujan-ringan.json',
-        'Hujan Sedang': '/icon/hujan-sedang.json',
-        'Hujan Lebat': '/icon/hujan-lebat.json',
-        'Hujan Sangat Lebat': '/icon/hujan-lebat.json',
-        'Hujan Ekstrem': '/icon/hujan-lebat.json',
-        'Hujan Petir': '/icon/hujan-petir.json',
-        'Kabut/Asap': '/icon/kabut.json',
-        'Udara Kabur': '/icon/haze.json',
-        'Kabut': '/icon/kabut.json',
-        'Petir': '/icon/petir.json',
-        'unknown': '/icon/berawan.json'
+        'Cerah': '/icon/weather-icon/Cerah.svg',
+        'Cerah Berawan': '/icon/weather-icon/Cerah-berawan.svg',
+        'Berawan': '/icon/weather-icon/berawan.svg',
+        'Berawan Tebal': '/icon/weather-icon/Berawan-tebal.svg',
+        'Hujan Ringan': '/icon/weather-icon/Hujan-ringan.svg',
+        'Hujan Sedang': '/icon/weather-icon/Hujan-sedang.svg',
+        'Hujan Lebat': '/icon/weather-icon/Hujan-lebat.svg',
+        'Hujan Sangat Lebat': '/icon/weather-icon/Hujan-lebat.svg',
+        'Hujan Petir': '/icon/weather-icon/Hujan-petir.svg',
+        'Udara Kabur': '/icon/weather-icon/udara-kabur.svg',
+        'Kabut': '/icon/weather-icon/kabut.svg',
+        'Petir': '/icon/weather-icon/Petir.svg',
+        'unknown': '/icon/current.svg'
     };
 
     // Helper function to create label HTML
@@ -312,15 +310,8 @@ const PerairanPage = ({
         return `
             <div class="bg-white/95 backdrop-blur rounded-lg px-1 py-1 text-[11px] font-semibold text-gray-800 shadow-md pointer-events-none cursor-default flex flex-col items-center min-w-[100px]" style="border: 2px solid ${borderColor};">
                 <!-- Row 1: Weather Icon -->
-                <div class="flex items-center justify-center mb-1">
-                    <lottie-player
-                        src="${weatherIconPath}"
-                        background="transparent"
-                        speed="1"
-                        style="width: 60px; height: 60px;"
-                        loop
-                        autoplay
-                    ></lottie-player>
+                <div class="flex items-center justify-center mb-2 w-15 h-15">
+                    <img src="${weatherIconPath}"/>
                 </div>
 
                 

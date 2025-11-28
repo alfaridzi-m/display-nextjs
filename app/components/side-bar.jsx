@@ -1,6 +1,6 @@
 'use client';
 
-import { Sun, Cloud, Map, Moon, FishSymbol, Anchor } from 'lucide-react';
+import { Sun, Cloud, Map, Book, Anchor } from 'lucide-react';
 import NavItem from './nav-item';
 import { lightTheme, darkTheme } from './theme';
 
@@ -88,6 +88,7 @@ const Sidebar = ({ activePage, handleNavClick, isDarkMode, setIsDarkMode, pageDu
 
         </div>
         <nav className="w-full md:w-auto flex-grow flex flex-row md:flex-col justify-around md:justify-start md:items-center">
+          <NavItem icon={Book} label="Glosarium" isActive={activePage === 'book'} onClick={() => handleNavClick('glosarium')} animationDuration={pageDurations.weather / 1000} theme={theme}/>  
           <NavItem icon={Cloud} label="Cuaca" isActive={activePage === 'weather'} onClick={() => handleNavClick('weather')} animationDuration={pageDurations.weather / 1000} theme={theme}/>
           <NavItem icon={Anchor} label="Pelabuhan" isActive={activePage === 'cities'} onClick={() => handleNavClick('cities')} animationDuration={pageDurations.cities / 1000} theme={theme}/>
           <NavItem icon={Map} label="Perairan" isActive={activePage === 'Perairan'} onClick={() => handleNavClick('Perairan')} animationDuration={pageDurations.Perairan / 1000} theme={theme}/>

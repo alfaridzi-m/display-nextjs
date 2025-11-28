@@ -12,10 +12,11 @@ import { lightTheme, darkTheme } from '../components/theme';
 import PerairanPage from '../components/perairan';
 import PetaPage from '../components/petaPage';
 import TopBar from '../components/top-bar';
+import BookPage from '../components/bookpage';
 
 const Display = () => {
   const router = useRouter();
-  const pages = ['weather', 'cities', 'Perairan', 'Peta'];
+  const pages = ['weather', 'cities', 'Perairan', 'Peta', 'book'];
   
   const [portIds, setPortIds] = useState([]);
   const [portEndPoints, setPortEndPoints] = useState([]);
@@ -31,6 +32,7 @@ const Display = () => {
   const [configLoaded, setConfigLoaded] = useState(false);
   
   const pageDurations = {
+    book : 20000,
     weather: 16000 * portIds.length,
     cities: 60000,
     Perairan: 60000,
@@ -237,9 +239,12 @@ const Display = () => {
         <TopBar isDarkMode={isDarkMode} setIsDarkMode={setIsDarkMode} title={displayTitle} />
 
 
-        <main className="flex-1 p-4 sm:p-6 lg:p-8 pb-28 md:pb-8 pt-20 md:pt-15 lg:pt-18 overflow-y-auto z-10">
+      <main className="flex-1 p-4 sm:p-6 lg:p-8 pb-28 md:pb-8 pt-20 md:pt-15 lg:pt-18 overflow-y-auto z-10">
 
-        <div>
+      <div>
+        <div style={{ display: activePage === 'book' ? 'block' : 'none' }}>
+            <BookPage theme={theme} />
+        </div>
         <div style={{ display: activePage === 'weather' ? 'block' : 'none' }}>
             <WeatherPage theme={theme} list={portIds} />
         </div>
@@ -259,7 +264,7 @@ const Display = () => {
               connectorStartPositions={connectorStartPositions}
               waveLegendPosition={waveLegendPosition}
             />
-        </div>
+      </div>
         <div style={{ display: activePage === 'Peta' ? 'block' : 'none' }}>
             <PetaPage theme={theme} />
         </div>
